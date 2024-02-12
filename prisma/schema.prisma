@@ -1,0 +1,40 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+//                  
+// [Tourist] <--- <Visit> ---> [Country]
+//                  
+
+
+model Country {
+  id            Int     @id @default(autoincrement())
+  abbreviation  String  @unique
+  name          String 
+  capital       String?
+  deleted       Boolean @default(false)
+  visits        Visit[] // Relación uno a muchos con Visit
+}
+
+model Tourist {
+  id      Int     @id @default(autoincrement())
+  name    String
+  visits  Visit[] // Relación uno a muchos con Visit
+}
+
+model Visit {
+  id         Int      @id @default(autoincrement())
+  date       DateTime
+  countryId  Int
+  touristId  Int
+  Country    Country  @relation(fields: [countryId], references: [id])
+  Tourist    Tourist  @relation(fields: [touristId], references: [id])
+}
