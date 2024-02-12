@@ -78,7 +78,7 @@ export const updateCountry = async (req: Request, res: Response) => {
             data: req.body,
         });
 
-        if (!updateCountry) {
+        if (!updatedCountry) {
             return handleError(res, "FAILED_TO_UPDATE_COUNTRY", 400);
         }
 

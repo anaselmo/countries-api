@@ -10,7 +10,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "falta JWT";
 
 
 
-export type JwtPayloadCustom = ((string | JwtPayload ) & Tourist) | null;
+export type JwtPayloadCustom = (JwtPayload & Tourist);
 
 /**
  * Debes de pasar el objeto del usuario

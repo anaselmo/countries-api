@@ -125,7 +125,7 @@ export const loginTourist = async (req: Request, res: Response) => {
         }
 
         const loginOutput = {
-            token: await tokenSign(loggedTourist), //min 4:23:38 
+            token: await tokenSign(loggedTourist),
             loggedTourist
         };
 

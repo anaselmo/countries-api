@@ -35,9 +35,12 @@ model Tourist {
 
 model Visit {
   id         Int      @id @default(autoincrement())
-  date       DateTime
+  date       DateTime @default(now())
   countryId  Int
   touristId  Int
-  Country    Country  @relation(fields: [countryId], references: [id])
-  Tourist    Tourist  @relation(fields: [touristId], references: [id])
+  deleted    Boolean  @default(false)
+  country    Country  @relation(fields: [countryId], references: [id])
+  tourist    Tourist  @relation(fields: [touristId], references: [id])
+
+  @@unique([date, countryId, touristId])
 }

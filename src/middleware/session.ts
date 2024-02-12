@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { handleError } from "../utils/handleError";
 import { verifyToken } from "../utils/handleJwt";
 import { prisma } from "../db";
+// import { JwtPayloadCustom } from "../utils/handleJwt";
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -27,6 +28,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         });
 
         res.locals.user = user;
+        res.locals.dataToken = dataToken;
 
         next();
     } catch (err) {
