@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { prisma } from "../db"; 
 import { createCountry, deleteCountry, getCountries, getCountry, updateCountry } from "../controllers/countries.controller";
 
 const router = Router();

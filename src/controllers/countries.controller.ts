@@ -9,18 +9,16 @@ import { handleError } from "../utils/handleError";
  * @param res 
  */
 export const getCountries = async (req: Request, res: Response) => {
-    
     try {
         const countries = await prisma.country.findMany();
 
         if (!countries) {
-            return res.status(404).send({ error:"COUNTRIES_NOT_FOUND" });
+            return handleError(res, "COUNTRIES_NOT_FOUND" , 404);
         }
 
         res.json(countries);
     } catch (err) {
-        console.error("An error ocurred while finding all country", err);
-        res.status(500).send({ error:"An error ocurred while finding all country" });
+        return handleError(res, "An error ocurred while finding all country" , 500, err);
     }
 };
 
@@ -37,11 +35,11 @@ export const getCountry = async (req: Request, res: Response) => {
         });
 
         if (!country) {
-            return res.status(404).send({ error:"COUNTRY_NOT_FOUND" });
+            return handleError(res, "COUNTRY_NOT_FOUND" , 404);
         }
 
         if (country.deleted) {
-            return res.status(402).send({ error:"COUNTRY_SOFT_DELETED" }); //TODO ¿Es 402?
+            return handleError(res, "COUNTRY_SOFT_DELETED" , 401);
         }
 
         res.json(country);
@@ -62,8 +60,7 @@ export const createCountry = async (req: Request, res: Response) => {
         });
         res.json(newCountry);
     } catch (err) {
-        console.error("An error occurred while creating a country", err);
-        res.status(500).json({ error: "An error occurred while creating a country" });
+        return handleError(res, "An error occurred while creating a country", 500, err);
     }
 };
 
@@ -82,7 +79,7 @@ export const updateCountry = async (req: Request, res: Response) => {
         });
 
         if (!updateCountry) {
-            return res.send({ error:"FAILED_TO_UPDATE_COUNTRY" });
+            return handleError(res, "FAILED_TO_UPDATE_COUNTRY", 400);
         }
 
         res.json(updatedCountry);
@@ -122,7 +119,7 @@ export const deleteCountry = async (req: Request, res: Response) => {
         }
 
         if (!deletedCountry) {
-            return res.send( { error: "COUNTRY_NOT_FOUND"});
+            return handleError(res, "COUNTRY_NOT_FOUND" , 404);
         }
 
         res.json(deletedCountry);

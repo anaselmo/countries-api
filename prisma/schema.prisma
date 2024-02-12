@@ -25,9 +25,12 @@ model Country {
 }
 
 model Tourist {
-  id      Int     @id @default(autoincrement())
-  name    String
-  visits  Visit[] // Relación uno a muchos con Visit
+  id        Int     @id @default(autoincrement())
+  name      String?
+  email     String  @unique
+  password  String 
+  deleted   Boolean @default(false)
+  visits    Visit[] // Relación uno a muchos con Visit
 }
 
 model Visit {
