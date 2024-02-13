@@ -1,7 +1,10 @@
 import { Request, Response } from "express";
 import { prisma } from "../db";
 import { validatorCreateVisit, validatorDeleteVisit, validatorUpdateVisit, validatorGetVisitById } from "../validators/visits.validator"
-import { handleError } from "../utils/handleError";
+import { outputError } from "../utils/handleError";
+
+//--------------------------------------------------------------------//
+//--------------------------------------------------------------------//
 
 /**
  * Obtener la lista de todas las visitas
@@ -12,7 +15,7 @@ export const getVisits = async (req: Request, res: Response) => {
     try {
         const loggedTourist = res.locals.dataToken;
         if (!loggedTourist) {
-            return handleError(res, "COULD_NOT_FIND_LOGGED_TOURIST_IN_RES_LOCALS", 500);
+            return outputError(res, "COULD_NOT_FIND_LOGGED_TOURIST_IN_RES_LOCALS", 500);
         }
 
         const visits = await prisma.visit.findMany({
@@ -22,12 +25,12 @@ export const getVisits = async (req: Request, res: Response) => {
         });
 
         if (!visits) {
-            return handleError(res, "VISITS_NOT_FOUND" , 404);
+            return outputError(res, "VISITS_NOT_FOUND" , 404);
         }
 
         res.json(visits);
     } catch (err) {
-        return handleError(res, "An error ocurred while finding all visits" , 500, err);
+        return outputError(res, "An error ocurred while finding all visits" , 500, err);
     }
 };
 
@@ -40,7 +43,7 @@ export const getVisit = async (req: Request, res: Response) => {
     try {
         const loggedTourist = res.locals.dataToken;
         if (!loggedTourist) {
-            return handleError(res, "COULD_NOT_FIND_LOGGED_TOURIST_IN_RES_LOCALS", 500);
+            return outputError(res, "COULD_NOT_FIND_LOGGED_TOURIST_IN_RES_LOCALS", 500);
         }
         const touristId = loggedTourist.id;
 
@@ -53,14 +56,14 @@ export const getVisit = async (req: Request, res: Response) => {
         });
 
         if (!visit) {
-            return handleError(res, "VISIT_NOT_FOUND" , 404);
+            return outputError(res, "VISIT_NOT_FOUND" , 404);
         } else if (visit.deleted ||visit.touristId !== touristId) {
-            return handleError(res, "UNAUTHORIZED", 401);
+            return outputError(res, "UNAUTHORIZED", 401);
         }
 
         res.json(visit);
     } catch (err) {
-        return handleError(res,"An error ocurred while finding a visit", 500, err);
+        return outputError(res,"An error ocurred while finding a visit", 500, err);
     }
 };
 
@@ -73,7 +76,7 @@ export const createVisit = async (req: Request, res: Response) => {
     try{
         const loggedTourist = res.locals.dataToken;
         if (!loggedTourist) {
-            return handleError(res, "COULD_NOT_FIND_LOGGED_TOURIST_IN_RES_LOCALS", 500);
+            return outputError(res, "COULD_NOT_FIND_LOGGED_TOURIST_IN_RES_LOCALS", 500);
         }
         const touristId: number = loggedTourist.id;
         const countryId = parseInt(req.params.id);
@@ -93,7 +96,7 @@ export const createVisit = async (req: Request, res: Response) => {
         });
         res.json(newVisit);
     } catch (err) {
-        return handleError(res, "An error occurred while creating a visit", 500, err);
+        return outputError(res, "An error occurred while creating a visit", 500, err);
     }
 };
 
@@ -106,7 +109,7 @@ export const updateVisit = async (req: Request, res: Response) => {
     try {
         const loggedTourist = res.locals.dataToken;
         if (!loggedTourist) {
-            return handleError(res, "COULD_NOT_FIND_LOGGED_TOURIST_IN_RES_LOCALS", 500);
+            return outputError(res, "COULD_NOT_FIND_LOGGED_TOURIST_IN_RES_LOCALS", 500);
         }
         const touristId: number = loggedTourist.id;
         const visitId = parseInt(req.params.id);
@@ -116,9 +119,9 @@ export const updateVisit = async (req: Request, res: Response) => {
         });
 
         if (!visit) {
-            return handleError(res, "VISIT_NOT_FOUND", 404);
+            return outputError(res, "VISIT_NOT_FOUND", 404);
         } else if (visit.touristId !== touristId) {
-            return handleError(res, "UNAUTHORIZED", 401);
+            return outputError(res, "UNAUTHORIZED", 401);
         }
 
         const updatedVisit = await prisma.visit.update({
@@ -142,7 +145,7 @@ export const deleteVisit = async (req: Request, res: Response) => {
     try {
         const loggedTourist = res.locals.dataToken;
         if (!loggedTourist) {
-            return handleError(res, "COULD_NOT_FIND_LOGGED_TOURIST_IN_RES_LOCALS", 500);
+            return outputError(res, "COULD_NOT_FIND_LOGGED_TOURIST_IN_RES_LOCALS", 500);
         }
         const touristId: number = loggedTourist.id;
 
@@ -154,9 +157,9 @@ export const deleteVisit = async (req: Request, res: Response) => {
         });
 
         if (!visitToDelete) {
-            return handleError(res, "VISIT_NOT_FOUND", 404);
+            return outputError(res, "VISIT_NOT_FOUND", 404);
         }  else if (visitToDelete.touristId !== touristId) {
-            return handleError(res, "UNAUTHORIZED", 401);
+            return outputError(res, "UNAUTHORIZED", 401);
         }
 
         let deletedVisit;
@@ -174,7 +177,7 @@ export const deleteVisit = async (req: Request, res: Response) => {
         }
 
         if (!deletedVisit) {
-            return handleError(res, "VISIT_NOT_FOUND" , 404);
+            return outputError(res, "VISIT_NOT_FOUND" , 404);
         }
 
         res.json(deletedVisit);

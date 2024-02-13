@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../db";
-import { handleError } from "../utils/handleError";
+import { outputError } from "../utils/handleError";
 import { validatorCreateTourist, validatorGetTouristById, validatorLoginTourist } from "../validators/tourists.validator";
 import { encrypt, comparePasswords } from "../utils/handlePassword";
 import { tokenSign } from "../utils/handleJwt";
@@ -22,12 +22,12 @@ export const getTourists = async (req: Request, res: Response) => {
         });
 
         if (!tourists) {
-            return handleError(res,"TOURISTS_NOT_FOUND", 404);
+            return outputError(res,"TOURISTS_NOT_FOUND", 404);
         }
 
         res.json(tourists);
     } catch (err) {
-        return handleError(res,"An error ocurred while finding all tourists", 500, err);
+        return outputError(res,"An error ocurred while finding all tourists", 500, err);
     }
 };
 
@@ -50,16 +50,16 @@ export const getTourist = async (req: Request, res: Response) => {
         });
 
         if (!tourist) {
-            return handleError(res,"TOURIST_NOT_FOUND", 404);
+            return outputError(res,"TOURIST_NOT_FOUND", 404);
         }
 
         if (tourist.deleted) {
-            return handleError(res,"TOURIST_SOFT_DELETED", 401);
+            return outputError(res,"TOURIST_SOFT_DELETED", 401);
         }
 
         res.json(tourist);
     } catch (err) {
-        return handleError(res,"An error ocurred while finding a tourist", 500, err);
+        return outputError(res,"An error ocurred while finding a tourist", 500, err);
     }
 };
 
@@ -81,7 +81,7 @@ export const registerTourist = async (req: Request, res: Response) => {
         });
         
         if (!registeredTourist) {
-            return handleError(res, "TOURIST_COULD_NOT_BE_REGISTERED", 500);
+            return outputError(res, "TOURIST_COULD_NOT_BE_REGISTERED", 500);
         }
 
         const registerOutput = {
@@ -91,7 +91,7 @@ export const registerTourist = async (req: Request, res: Response) => {
 
         res.send({ registerOutput });
     } catch (err) {
-        return handleError(res, "ERROR_REGISTER_USER", 500, err);
+        return outputError(res, "ERROR_REGISTER_USER", 500, err);
     }
 };
 
@@ -115,13 +115,13 @@ export const loginTourist = async (req: Request, res: Response) => {
         console.log({ users });
         
         if (!loggedTourist) {
-            return handleError(res, "TOURIST_DOESNT_EXIST", 404);
+            return outputError(res, "TOURIST_DOESNT_EXIST", 404);
         }
 
         const check = await comparePasswords(validatedBody.password, loggedTourist.password);
 
         if (!check) {
-            return handleError(res, "INVALID_PASSWORD", 401);
+            return outputError(res, "INVALID_PASSWORD", 401);
         }
 
         const loginOutput = {
@@ -131,7 +131,7 @@ export const loginTourist = async (req: Request, res: Response) => {
 
         res.send({ loginOutput });
     } catch (err) {
-        return handleError(res, "ERROR_LOGIN_USER", 500, err);
+        return outputError(res, "ERROR_LOGIN_USER", 500, err);
     }
 };
 
@@ -155,7 +155,7 @@ export const updateTourist = async (req: Request, res: Response) => {
 
         res.json(updatedTourist);
     } catch (err) {
-        return handleError(res,`An error ocurred while updating the tourist with id "${req.params.id}"`, 500, err);
+        return outputError(res,`An error ocurred while updating the tourist with id "${req.params.id}"`, 500, err);
     }
 };
 
@@ -172,7 +172,7 @@ export const deleteTourist = async (req: Request, res: Response) => {
         });
 
         if (!touristToDelete) {
-            return handleError(res, "TOURIST_NOT_FOUND", 404);
+            return outputError(res, "TOURIST_NOT_FOUND", 404);
         }
 
         let deletedTourist;
@@ -190,11 +190,11 @@ export const deleteTourist = async (req: Request, res: Response) => {
         }
 
         if (!deletedTourist) {
-            return handleError(res, "TOURIST_NOT_FOUND", 404);
+            return outputError(res, "TOURIST_NOT_FOUND", 404);
         }
 
         res.json(deletedTourist);
     } catch (err) {
-        return handleError(res, `An error ocurred while deleting the tourist with id "${req.params.id}"`, 500);
+        return outputError(res, `An error ocurred while deleting the tourist with id "${req.params.id}"`, 500);
     }
 };
