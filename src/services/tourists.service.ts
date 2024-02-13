@@ -1,26 +1,61 @@
 import { Tourist, Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { NotFoundError, UnauthenticatedError } from "../utils/handleError";
-import { validatorCreateCountry, validatorDeleteCountry, validatorGetCountryById } from "../validators/countries.validator";
-import { validatorCreateTourist, validatorDeleteTourist, validatorGetTouristById } from "../validators/tourists.validator";
+import { validatorCreateTourist, validatorDeleteTourist, validatorGetTouristById, validatorLoginTourist, validatorUpdateTourist } from "../validators/tourists.validator";
+import { comparePasswords, encrypt } from "../utils/handlePassword";
+import { tokenSign } from "../utils/handleJwt";
 
 //--------------------------------------------------------------------//
 //--------------------------------------------------------------------//
 
 export interface ITouristService {
-    getTourist(id: Tourist["id"]): Promise<Tourist>;
-    getTourists(): Promise<Tourist[]>;
+    getTourist(id: Tourist["id"]): Promise<TouristOutputInfo>;
+    getTourists(): Promise<TouristOutputInfo[]>;
     updateTourist(
         id: Tourist["id"], 
         data: Prisma.TouristUpdateInput
-    ): Promise<Tourist>;
+    ): Promise<TouristOutputInfo>;
     deleteTourist(
         id: Tourist["id"], 
         hard?: boolean
-    ): Promise<Tourist>;
-    createTourist(
+    ): Promise<TouristOutputInfo>;
+    registerTourist(
         data: Prisma.TouristCreateInput
-    ): Promise<Tourist>;
+    ): Promise<TouristResponse>;
+    loginTourist(
+        data: TouristLogin
+    ): Promise<TouristResponse>;
+}
+
+//--------------------------------------------------//
+
+type TouristOutputInfo = {
+    id: number,
+    name: string | null,
+    email: string,
+    deleted: boolean
+}
+
+//--------------------------------------------------//
+
+type TouristLogin = {
+    name: string | null,
+    email: string,
+    password: string
+}
+
+type TouristResponse = {
+    data: TouristOutputInfo,
+    token: string
+}
+
+//--------------------------------------------------//
+
+const touristOutputInfo = {
+    id: true,
+    name: true,
+    email: true,
+    deleted: true
 }
 
 //--------------------------------------------------------------------//
@@ -49,7 +84,9 @@ export class TouristService implements ITouristService {
     //--------------------------------------------------//
 
     public async getTourists() {
-        const tourists = await this.repository.findMany({});
+        const tourists = await this.repository.findMany({
+            select: touristOutputInfo
+        });
 
         if (!tourists) {
             throw new Error("Tourists not found");
@@ -75,7 +112,8 @@ export class TouristService implements ITouristService {
 
         const updatedTourist = await this.repository.update({
             where: validatorGetTouristById(id),
-            data
+            data: validatorUpdateTourist(id, data),
+            select: touristOutputInfo
         });
 
         return updatedTourist;
@@ -102,10 +140,11 @@ export class TouristService implements ITouristService {
                 throw new UnauthenticatedError(`You do not have permissions to delete Tourist #${id}`);
             }
             deletedTourist = await this.repository.update({
-                where: { id },
+                where: validatorGetTouristById(id),
                 data: {
                     deleted: true,
-                }            
+                },
+                select: touristOutputInfo     
             })
         }
 
@@ -118,11 +157,49 @@ export class TouristService implements ITouristService {
 
     //--------------------------------------------------//
 
-    public async createTourist(data: Prisma.TouristCreateInput) {
+    public async registerTourist(data: Prisma.TouristCreateInput) {
+        const password = await encrypt(data.password);
+        const dataWithPasswordHash = {...data, password};
+
         const newTourist = await this.repository.create({
-            data: validatorCreateTourist(data)
+            data: validatorCreateTourist(dataWithPasswordHash),
+            // select: touristOutputInfo
         });
 
-        return newTourist;
+        if (!newTourist){
+            throw new Error(`Tourist could not be registered`);
+        }
+
+        const token = await tokenSign(newTourist);
+        return {data: newTourist, token};
+    }
+
+    //--------------------------------------------------//
+
+    public async loginTourist(data: TouristLogin) {
+        const validatedData = validatorLoginTourist(data);
+        const loggedTourist = await this.repository.findUnique({
+            where: {
+                email: validatedData.email
+            }
+        });
+
+        if (!loggedTourist) {
+            throw new NotFoundError(`Tourist not found`);
+        }
+
+        const check = await comparePasswords(
+            validatedData.password, 
+            loggedTourist.password
+        );
+
+        if (!check) {
+            throw new UnauthenticatedError("Invalid password");
+        }
+
+        const token = await tokenSign(loggedTourist);
+        return {
+            data:loggedTourist, token
+        };
     }
 }

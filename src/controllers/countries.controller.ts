@@ -26,7 +26,7 @@ export const getCountries = async (req: Request, res: Response) => {
 export const getCountry = async (req: Request, res: Response, next: NextFunction) => {
     const id = parseInt(req.params.id);
     const country = await countryService.getCountry(id);
-    res.json(country);    
+    res.json(country);  
 };
 
 /**
