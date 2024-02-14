@@ -119,6 +119,23 @@ export class CountryService implements ICountryService {
     //--------------------------------------------------//
 
     public async createCountry(data: Prisma.CountryCreateInput) {
+        const validatedData = validatorCreateCountry(data);
+
+        const { name, abbreviation } = validatedData;
+        const countryWithSameName = await this.repository.findUnique({
+            where: { name }
+        });
+        if (countryWithSameName) {
+            throw new Error(`Country with name "${name}" already exists`);
+        }
+        const countryWithSameAbbreviation = await this.repository.findUnique({
+            where: { abbreviation }
+        });
+        if (countryWithSameAbbreviation) {
+            throw new Error(`Country with abbreviation "${abbreviation}" already exists`);
+        }
+
+
         const newCountry = await this.repository.create({
             data: validatorCreateCountry(data)
         });

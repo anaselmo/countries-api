@@ -23,7 +23,7 @@ export interface ITouristService {
         data: Prisma.TouristCreateInput
     ): Promise<TouristResponse>;
     loginTourist(
-        data: TouristLogin
+        data: TouristLoginInput
     ): Promise<TouristResponse>;
 }
 
@@ -38,7 +38,7 @@ type TouristOutputInfo = {
 
 //--------------------------------------------------//
 
-type TouristLogin = {
+type TouristLoginInput = {
     name: string | null,
     email: string,
     password: string
@@ -176,7 +176,7 @@ export class TouristService implements ITouristService {
 
     //--------------------------------------------------//
 
-    public async loginTourist(data: TouristLogin) {
+    public async loginTourist(data: TouristLoginInput) {
         const validatedData = validatorLoginTourist(data);
         const loggedTourist = await this.repository.findUnique({
             where: {
