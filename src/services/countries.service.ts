@@ -26,12 +26,12 @@ export interface ICountryService {
 //--------------------------------------------------------------------//
 
 export class CountryService implements ICountryService {
-    constructor(private readonly repository: typeof prisma.country) {} //tb Prisma
+    constructor(private readonly repo: typeof prisma) {} //tb Prisma
 
     //--------------------------------------------------//
 
     public async getCountry(id: Country["id"]) {
-        const country = await this.repository.findFirst({
+        const country = await this.repo.country.findFirst({
             where: validatorGetCountryById(id)
         });
 
@@ -49,7 +49,7 @@ export class CountryService implements ICountryService {
     //--------------------------------------------------//
 
     public async getCountries() {
-        const countries = await this.repository.findMany({});
+        const countries = await this.repo.country.findMany({});
 
         if (!countries) {
             throw new Error("Countries not found");
@@ -61,7 +61,7 @@ export class CountryService implements ICountryService {
     //--------------------------------------------------//
 
     public async updateCountry(id: Country["id"], data: Prisma.CountryUpdateInput) {
-        const countryToUpdate = await this.repository.findFirst({
+        const countryToUpdate = await this.repo.country.findFirst({
             where: validatorGetCountryById(id)
         });
 
@@ -73,7 +73,7 @@ export class CountryService implements ICountryService {
             throw new UnauthenticatedError(`You do not have permissions to update Country #${id}`);
         }
 
-        const updatedCountry = await this.repository.update({
+        const updatedCountry = await this.repo.country.update({
             where: validatorGetCountryById(id),
             data
         });
@@ -84,7 +84,7 @@ export class CountryService implements ICountryService {
     //--------------------------------------------------//
 
     public async deleteCountry(id: Country["id"], hard?: boolean) {
-        const countryToDelete = await this.repository.findFirst({
+        const countryToDelete = await this.repo.country.findFirst({
             where: validatorDeleteCountry(id)
         });
 
@@ -122,13 +122,13 @@ export class CountryService implements ICountryService {
         const validatedData = validatorCreateCountry(data);
 
         const { name, abbreviation } = validatedData;
-        const countryWithSameName = await this.repository.findUnique({
+        const countryWithSameName = await this.repo.country.findUnique({
             where: { name }
         });
         if (countryWithSameName) {
             throw new Error(`Country with name "${name}" already exists`);
         }
-        const countryWithSameAbbreviation = await this.repository.findUnique({
+        const countryWithSameAbbreviation = await this.repo.country.findUnique({
             where: { abbreviation }
         });
         if (countryWithSameAbbreviation) {
@@ -136,7 +136,7 @@ export class CountryService implements ICountryService {
         }
 
 
-        const newCountry = await this.repository.create({
+        const newCountry = await this.repo.country.create({
             data: validatorCreateCountry(data)
         });
 

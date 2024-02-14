@@ -5,7 +5,9 @@ import { TouristService } from "../services/tourists.service";
 //--------------------------------------------------------------------//
 //--------------------------------------------------------------------//
 
-const touristService = new TouristService(prisma.tourist);
+const touristService = new TouristService(prisma);
+
+//--------------------------------------------------------------------//
 
 /**
  * Obtener la lista de todos los países

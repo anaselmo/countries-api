@@ -6,7 +6,7 @@ import { CountryService, ICountryService } from "../services/countries.service";
 //--------------------------------------------------------------------//
 //--------------------------------------------------------------------//
 
-const countryService = new CountryService(prisma.country);
+const countryService = new CountryService(prisma);
 
 /**
  * Obtener la lista de todos los países

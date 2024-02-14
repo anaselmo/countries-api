@@ -2,69 +2,42 @@ import { Request, Response } from "express";
 import { prisma } from "../db";
 import { validatorCreateVisit, validatorDeleteVisit, validatorUpdateVisit, validatorGetVisitById } from "../validators/visits.validator"
 import { outputError } from "../utils/handleError";
+import { Tourist } from "@prisma/client";
+import { TouristService } from "../services/tourists.service";
 
 //--------------------------------------------------------------------//
 //--------------------------------------------------------------------//
+
+const touristService = new TouristService(prisma);
+
+//--------------------------------------------------------------------//
+
 
 /**
- * Obtener la lista de todas las visitas
+ * Obtener la lista de todas las visitas de un turista
  * @param req 
  * @param res 
  */
 export const getVisits = async (req: Request, res: Response) => {
-    try {
-        const loggedTourist = res.locals.dataToken;
-        if (!loggedTourist) {
-            return outputError(res, "COULD_NOT_FIND_LOGGED_TOURIST_IN_RES_LOCALS", 500);
-        }
 
-        const visits = await prisma.visit.findMany({
-            where: {
-                touristId: loggedTourist.id
-            }
-        });
+    const loggedTourist: Tourist = res.locals.dataToken;
+    const { id } = loggedTourist;
 
-        if (!visits) {
-            return outputError(res, "VISITS_NOT_FOUND" , 404);
-        }
-
-        res.json(visits);
-    } catch (err) {
-        return outputError(res, "An error ocurred while finding all visits" , 500, err);
-    }
+    const visits = await touristService.getAllVisits(id);
+    res.json(visits);
 };
 
 /**
- * Obtener la información de una visita por su id
+ * Obtener todas las visitas de un turista a un pais determinado
  * @param req 
  * @param res 
  */
 export const getVisit = async (req: Request, res: Response) => {
-    try {
-        const loggedTourist = res.locals.dataToken;
-        if (!loggedTourist) {
-            return outputError(res, "COULD_NOT_FIND_LOGGED_TOURIST_IN_RES_LOCALS", 500);
-        }
-        const touristId = loggedTourist.id;
-
-        const visitId = parseInt(req.params.id);
-
-        const visit = await prisma.visit.findFirst({
-            where: {
-                id: visitId,
-            }
-        });
-
-        if (!visit) {
-            return outputError(res, "VISIT_NOT_FOUND" , 404);
-        } else if (visit.deleted ||visit.touristId !== touristId) {
-            return outputError(res, "UNAUTHORIZED", 401);
-        }
-
-        res.json(visit);
-    } catch (err) {
-        return outputError(res,"An error ocurred while finding a visit", 500, err);
-    }
+    const loggedTourist = res.locals.dataToken;
+    const touristId = loggedTourist.id;
+    const countryId = parseInt(req.params.id);
+    const visit = await touristService.getVisitsToCountry(touristId, countryId);
+    res.json(visit);
 };
 
 /**
@@ -73,31 +46,16 @@ export const getVisit = async (req: Request, res: Response) => {
  * @param res 
  */
 export const createVisit = async (req: Request, res: Response) => {
-    try{
-        const loggedTourist = res.locals.dataToken;
-        if (!loggedTourist) {
-            return outputError(res, "COULD_NOT_FIND_LOGGED_TOURIST_IN_RES_LOCALS", 500);
-        }
-        const touristId: number = loggedTourist.id;
-        const countryId = parseInt(req.params.id);
-
-        let validatedBody = validatorCreateVisit(req.body);
-
-        const newVisit = await prisma.visit.create({
-            data: {
-                ...validatedBody,
-                country: {
-                    connect: { id: countryId },
-                },
-                tourist: {
-                    connect: { id: touristId }
-                }
-            }
-        });
-        res.json(newVisit);
-    } catch (err) {
-        return outputError(res, "An error occurred while creating a visit", 500, err);
-    }
+    const loggedTourist = res.locals.dataToken;
+    const touristId = loggedTourist.id;
+    console.log(req.body);
+    const { countryId, ...data } = req.body;
+    const visit = await touristService.createVisit(
+        touristId, 
+        countryId, 
+        data
+    );
+    res.json(visit);
 };
 
 /**
@@ -106,33 +64,21 @@ export const createVisit = async (req: Request, res: Response) => {
  * @param res 
  */
 export const updateVisit = async (req: Request, res: Response) => {
-    try {
-        const loggedTourist = res.locals.dataToken;
-        if (!loggedTourist) {
-            return outputError(res, "COULD_NOT_FIND_LOGGED_TOURIST_IN_RES_LOCALS", 500);
-        }
-        const touristId: number = loggedTourist.id;
-        const visitId = parseInt(req.params.id);
+    const loggedTourist = res.locals.dataToken;
+    const touristId: number = loggedTourist.id;
+    const visitId = parseInt(req.params.id);
 
-        const visit = await prisma.visit.findUnique({
-            where: { id: visitId },
-        });
+    // const updatedVisit = await prisma.visit.update({
+    //     where: { id: visitId },
+    //     data: req.body,
+    // });
 
-        if (!visit) {
-            return outputError(res, "VISIT_NOT_FOUND", 404);
-        } else if (visit.touristId !== touristId) {
-            return outputError(res, "UNAUTHORIZED", 401);
-        }
+    console.log({visitId}, {touristId}, {body: req.body})
 
-        const updatedVisit = await prisma.visit.update({
-            where: { id: visitId },
-            data: req.body,
-        });
+    const updatedVisit = await touristService.updateVisit(visitId, touristId, req.body);
 
-        res.json(updatedVisit);
-    } catch (err) {
-        console.error(`An error ocurred while updating the visit with id "${req.params.id}"`, err);
-    }
+    res.json(updatedVisit);
+
 };
 
 
