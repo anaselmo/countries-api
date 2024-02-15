@@ -16,7 +16,7 @@ const touristService = new TouristService(prisma);
  * @param req 
  * @param res 
  */
-export const getVisits = async (req: Request, res: Response) => {
+export const getAllVisits = async (req: Request, res: Response) => {
 
     const loggedTourist: Tourist = res.locals.dataToken;
     const touristId = loggedTourist.id;
@@ -31,7 +31,7 @@ export const getVisits = async (req: Request, res: Response) => {
  * @param req 
  * @param res 
  */
-export const getVisit = async (req: Request, res: Response) => {
+export const getVisitsToCountry = async (req: Request, res: Response) => {
     const loggedTourist = res.locals.dataToken;
     const touristId = loggedTourist.id;
     const countryId = parseInt(req.params.id);

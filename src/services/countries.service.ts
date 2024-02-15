@@ -1,25 +1,51 @@
 import { Country, Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { NotFoundError, UnauthenticatedError } from "../utils/handleError";
-import { validatorCreateCountry, validatorDeleteCountry, validatorGetCountryById } from "../validators/countries.validator";
+import { validatorCreateCountry, validatorDeleteCountry, validatorGetCountryById, validatorUpdateCountry } from "../validators/countries.validator";
 
 //--------------------------------------------------------------------//
 //--------------------------------------------------------------------//
 
 export interface ICountryService {
-    getCountry(id: Country["id"]): Promise<Country>;
-    getCountries(): Promise<Country[]>;
+    getCountry(id: Country["id"]): Promise<CountryOutputUser>;
+    getCountries(): Promise<CountryOutputUser[]>;
     updateCountry(
         id: Country["id"], 
         data: Prisma.CountryUpdateInput
-    ): Promise<Country>;
+    ): Promise<CountryOutputUser>;
     deleteCountry(
         id: Country["id"], 
         hard?: boolean
-    ): Promise<Country>;
+    ): Promise<CountryOutputUser>;
     createCountry(
         data: Prisma.CountryCreateInput
-    ): Promise<Country>;
+    ): Promise<CountryOutputUser>;
+}
+
+//--------------------------------------------------//
+
+const countryOutputAdmin = {
+    id: true,
+    abbreviation: true,
+    name: true,
+    capital: true,
+    deleted: true
+}
+
+//--------------------------------------------------//
+
+type CountryOutputUser = {
+    id:           Country["id"],
+    abbreviation: Country["abbreviation"],
+    name:         Country["name"],
+    capital:      Country["capital"]
+}
+
+const countryOutputUser = {
+    id: true,
+    abbreviation: true,
+    name: true,
+    capital: true
 }
 
 //--------------------------------------------------------------------//
@@ -29,20 +55,26 @@ export class CountryService implements ICountryService {
 
     //--------------------------------------------------//
 
-    public async getCountry(id: Country["id"]) {
+    private async findCountryById(id: Country["id"]) {
         const country = await this.repo.country.findFirst({
             where: validatorGetCountryById(id)
         });
 
         if (!country) {
-            throw new NotFoundError(`Country #${id} not found`);
-        }
-
-        if (country.deleted) {
-            throw new UnauthenticatedError(`You do not have permissions to access Country #${id}`);
+            throw new NotFoundError(`Country not found`);
+        } else if (country.deleted) {
+            throw new UnauthenticatedError(`You cannot access Country #${id} (soft deleted)`);
         }
 
         return country;
+    }
+
+    //--------------------------------------------------//
+
+    public async getCountry(id: Country["id"]) {
+        const country = await this.findCountryById(id);
+        const { deleted, ...sanitizedCountry } = country;
+        return sanitizedCountry;
     }
 
     //--------------------------------------------------//
@@ -54,27 +86,23 @@ export class CountryService implements ICountryService {
             throw new Error("Countries not found");
         }
 
-        return countries;
+        const sanitizedCountries = countries.map(country => {
+            const { deleted, ...sanitizedCountry } = country;
+            return sanitizedCountry;
+        }); 
+
+        return sanitizedCountries;
     }
 
     //--------------------------------------------------//
 
     public async updateCountry(id: Country["id"], data: Prisma.CountryUpdateInput) {
-        const countryToUpdate = await this.repo.country.findFirst({
-            where: validatorGetCountryById(id)
-        });
-
-        if (!countryToUpdate) {
-            throw new NotFoundError(`Country #${id} not found`);
-        }
-
-        if (countryToUpdate.deleted) {
-            throw new UnauthenticatedError(`You do not have permissions to update Country #${id}`);
-        }
+        await this.findCountryById(id);
 
         const updatedCountry = await this.repo.country.update({
             where: validatorGetCountryById(id),
-            data
+            data: validatorUpdateCountry(id, data),
+            select: countryOutputUser
         });
 
         return updatedCountry;
@@ -93,19 +121,18 @@ export class CountryService implements ICountryService {
 
         let deletedCountry;
         if (hard) {
+            await prisma.visit.deleteMany({
+                where: { countryId: id }
+            });
             deletedCountry = await prisma.country.delete({
-                where: { id }
+                where: validatorDeleteCountry(id),
+                select: countryOutputUser
             });
         } else {
             if (countryToDelete.deleted) {
-                throw new UnauthenticatedError(`You do not have permissions to delete Country #${id}`);
+                throw new UnauthenticatedError(`You do not have permissions to delete Country #${id} (soft delete)`);
             }
-            deletedCountry = await prisma.country.update({
-                where: { id },
-                data: {
-                    deleted: true,
-                }            
-            })
+            deletedCountry = await this.updateCountry(id, { deleted: true });
         }
 
         if (!deletedCountry) {
@@ -134,11 +161,12 @@ export class CountryService implements ICountryService {
             throw new Error(`Country with abbreviation "${abbreviation}" already exists`);
         }
 
-
         const newCountry = await this.repo.country.create({
             data: validatorCreateCountry(data)
         });
 
         return newCountry;
     }
+
+    //--------------------------------------------------//
 }
