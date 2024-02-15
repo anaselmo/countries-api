@@ -1,6 +1,5 @@
 import { Country, Prisma } from "@prisma/client";
 import { prisma } from "../db";
-import { outputError } from "../utils/handleError";
 import { NotFoundError, UnauthenticatedError } from "../utils/handleError";
 import { validatorCreateCountry, validatorDeleteCountry, validatorGetCountryById } from "../validators/countries.validator";
 

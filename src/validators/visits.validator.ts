@@ -1,5 +1,4 @@
-import { Prisma, PrismaClient, Visit } from '@prisma/client';
-import { prisma } from "../db";
+import { Prisma } from '@prisma/client';
 
 /**
  * 

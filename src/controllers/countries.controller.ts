@@ -1,7 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { prisma } from "../db";
-import { outputError } from "../utils/handleError";
-import { CountryService, ICountryService } from "../services/countries.service";
+import { CountryService } from "../services/countries.service";
 
 //--------------------------------------------------------------------//
 //--------------------------------------------------------------------//

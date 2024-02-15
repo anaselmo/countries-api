@@ -8,12 +8,12 @@ const router = Router();
 /**
  * Obtener la lista de todos los turistas
  */
-router.get("/", authMiddleware, handleError(getTourists));
+router.get("/", handleError(getTourists));
 
 /**
  * Obtener la información de un turista por su id
  */
-router.get("/:id", authMiddleware, handleError(getTourist));
+router.get("/:id", handleError(getTourist));
 
 /**
  * Registrarse como turista
@@ -26,14 +26,16 @@ router.post("/auth/register", handleError(registerTourist));
 router.post("/auth/login", handleError(loginTourist));
 
 /**
- * Actualizar información de un turista
+ * Actualizar información del turista del token
+ * @pre debe tener un token
  */
-router.put("/:id", authMiddleware, handleError(updateTourist));
+router.put("/", authMiddleware, handleError(updateTourist));
 
 /**
- * Eliminar un turista
+ * Eliminar turista del token
+ * @pre debe tener un token
  */
-router.delete("/:id", authMiddleware, handleError(deleteTourist));
+router.delete("/", authMiddleware, handleError(deleteTourist));
 
 
 

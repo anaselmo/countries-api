@@ -19,6 +19,8 @@ export const getTourists = async (req: Request, res: Response) => {
     res.json(tourists);
 };
 
+//--------------------------------------------------------------------//
+
 /**
  * Obtener la información de un país por su id
  * @param req 
@@ -30,6 +32,8 @@ export const getTourist = async (req: Request, res: Response) => {
     res.json(tourist);
 };
 
+//--------------------------------------------------------------------//
+
 /**
  * Registrar turista
  * @param req 
@@ -38,8 +42,10 @@ export const getTourist = async (req: Request, res: Response) => {
  */
 export const registerTourist = async (req: Request, res: Response) => {
     const registeredTourist = await touristService.registerTourist(req.body);
-    res.send(registeredTourist);
+    res.json(registeredTourist);
 };
+
+//--------------------------------------------------------------------//
 
 /**
  * Iniciar sesión de turista
@@ -49,8 +55,10 @@ export const registerTourist = async (req: Request, res: Response) => {
  */
 export const loginTourist = async (req: Request, res: Response) => {     
     const loggedTourist = await touristService.loginTourist(req.body);
-    res.send(loggedTourist);
+    res.json(loggedTourist);
 };
+
+//--------------------------------------------------------------------//
 
 /**
  * Actualizar información de un turista
@@ -58,10 +66,16 @@ export const loginTourist = async (req: Request, res: Response) => {
  * @param res 
  */
 export const updateTourist = async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id);
-    const updatedTourist = await touristService.updateTourist(id, req.body);
+    const loggedTourist = res.locals.dataToken;
+    const touristId = loggedTourist.id;
+    const updatedTourist = await touristService.updateTourist(
+        touristId, 
+        req.body
+    );
     res.json(updatedTourist);
 };
+
+//--------------------------------------------------------------------//
 
 /**
  * Eliminar un país
@@ -69,7 +83,15 @@ export const updateTourist = async (req: Request, res: Response) => {
  * @param res 
  */
 export const deleteTourist = async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id);
-    const deletedTourist = await touristService.deleteTourist(id);
+    const loggedTourist = res.locals.dataToken;
+    const touristId = loggedTourist.id;
+    const hardDelete = req.query.hard === "true";
+    const deletedTourist = await touristService.deleteTourist(
+        touristId, 
+        hardDelete
+    );
     res.json(deletedTourist);
 };
+
+//--------------------------------------------------------------------//
+//--------------------------------------------------------------------//
