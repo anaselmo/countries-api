@@ -1,23 +1,22 @@
-import { Request, Response, NextFunction, RequestHandler } from 'express'
+import type { Request, Response, NextFunction, RequestHandler } from 'express'
 import { outputError } from '../utils/handleError'
 import { verifyToken } from '../utils/handleJwt'
 import { prisma } from '../db'
-// import { JwtPayloadCustom } from "../utils/handleJwt";
 
 export const authMiddleware = (async (req: Request, res: Response, next: NextFunction) => {
   try {
-    if (!req.headers.authorization) {
+    if (req.headers.authorization === null || req.headers.authorization === undefined) {
       outputError(res, 'YOU_NEED_SESSION', 401); return
     }
 
-    const [, token] = req.headers.authorization.split(' ') // Bearer **<token>**
-    if (!token) {
+    const [, token] = req.headers.authorization.split(' ') // "Bearer" "<token>"
+    if (token.length === 0) {
       outputError(res, 'NO_TOKEN', 401); return
     }
 
-    const dataToken = await verifyToken(token)
+    const dataToken = verifyToken(token)
 
-    if (!dataToken) {
+    if (dataToken === null) {
       outputError(res, 'ERROR_TOKEN', 401); return
     }
 

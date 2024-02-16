@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { getAllVisits, getVisitsToCountry, createVisit, updateVisit, deleteVisit } from '../controllers/visits.controller'
-import { authMiddleware } from '../middleware/session'
+import { authMiddleware } from '../middleware/session.middleware'
 import { handleError } from '../utils/handleError'
 
 const router = Router()

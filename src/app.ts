@@ -1,6 +1,6 @@
 import express from 'express'
 import router from './routes'
-import { errorMiddleware } from './middleware/errors'
+import { errorMiddleware } from './middleware/errors.middleware'
 
 const app = express()
 

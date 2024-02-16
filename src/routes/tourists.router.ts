@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { registerTourist, loginTourist, deleteTourist, getTourist, getTourists, updateTourist } from '../controllers/tourists.controller'
-import { authMiddleware } from '../middleware/session'
+import { authMiddleware } from '../middleware/session.middleware'
 import { handleError } from '../utils/handleError'
 
 const router = Router()

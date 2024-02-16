@@ -3,6 +3,7 @@ import { prisma } from '../db'
 import { NotFoundError, UnauthenticatedError } from '../utils/handleError'
 import { validatorCreateCountry, validatorDeleteCountry, validatorGetCountryByAbbreviation, validatorGetCountryById, validatorGetCountryByName, validatorUpdateCountry } from '../validators/countries.validator'
 import { type CreateCountryDto } from '../dtos/createCountry.dto'
+import type { UpdateCountryDto } from '../dtos/updateCountry.dto'
 
 // --------------------------------------------------------------------//
 // --------------------------------------------------------------------//
@@ -12,7 +13,7 @@ export interface ICountryService {
   getCountries: () => Promise<CountryOutputUser[]>
   updateCountry: (
     id: Country['id'],
-    data: Prisma.CountryUpdateInput
+    data: UpdateCountryDto
   ) => Promise<CountryOutputUser>
   deleteCountry: (
     id: Country['id'],
@@ -91,40 +92,24 @@ export class CountryService implements ICountryService {
 
   // --------------------------------------------------//
 
-  public async updateCountry (id: Country['id'], data: Prisma.CountryUpdateInput) {
-    await this.findCountryById(id)
-
-    const { name, abbreviation, capital } = data
-
-    // TODO: Preguntar a Germán
-    // if (name){
-    //     const countryWithSameName = await this.repo.country.findUnique({
-    //         where: validatorGetCountryByName(name)
-    //     });
-    //     if (countryWithSameName) {
-    //         throw new Error(`Country with name "${name}" already exists`);
-    //     }
-    // }
-
-    // if (abbreviation) {
-    //     const countryWithSameAbbreviation = await this.repo.country.findUnique({
-    //         where: validatorGetCountryByAbbreviation(abbreviation)
-    //     });
-    //     if (countryWithSameAbbreviation) {
-    //         throw new Error(`Country with abbreviation "${abbreviation}" already exists`);
-    //     }
-    // }
-
-    // TODO: Wrap in  a try catch like create method
-    const updatedCountry = await this.repo.country.update({
-      where: validatorGetCountryById(id),
-      data: validatorUpdateCountry(id, {
-        name, abbreviation, capital
-      }),
-      select: countryOutputUser
-    })
-
-    return updatedCountry
+  public async updateCountry (id: Country['id'], data: UpdateCountryDto): Promise<CountryOutputUser> {
+    try {
+      await this.findCountryById(id)
+      // TODO: Wrap in  a try catch like create method
+      return await this.repo.country.update({
+        where: validatorGetCountryById(id),
+        data,
+        select: countryOutputUser
+      })
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        if (err.code === 'P2002') {
+          // TODO: Create a custom error, throw here and properly handle it in the middleware
+          throw new Error('Error in updateCountry')
+        }
+      }
+      throw err
+    }
   }
 
   // --------------------------------------------------//
