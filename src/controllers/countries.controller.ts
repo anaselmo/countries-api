@@ -12,8 +12,8 @@ export const getCountries = async (req: Request, res: Response): Promise<void> =
 }
 
 export const getCountry = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const id = parseInt(req.params.id)
-  const country = await countryService.getCountry(id)
+  const { id } = req.params
+  const country = await countryService.getCountry(Number.parseInt(id))
   res.json(country)
 }
 
