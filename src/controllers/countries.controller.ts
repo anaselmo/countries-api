@@ -1,6 +1,7 @@
 import { type NextFunction, type Request, type Response } from 'express'
 import { prisma } from '../db'
 import { CountryService } from '../services/countries.service'
+import { CreateCountryDto } from '../dtos/createCountry.dto'
 
 // --------------------------------------------------------------------//
 // --------------------------------------------------------------------//
@@ -12,7 +13,7 @@ const countryService = new CountryService(prisma)
  * @param req
  * @param res
  */
-export const getCountries = async (req: Request, res: Response) => {
+export const getCountries = async (req: Request, res: Response): Promise<void> => {
   const countries = await countryService.getCountries()
   res.json(countries)
 }
@@ -22,7 +23,7 @@ export const getCountries = async (req: Request, res: Response) => {
  * @param req
  * @param res
  */
-export const getCountry = async (req: Request, res: Response, next: NextFunction) => {
+export const getCountry = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const id = parseInt(req.params.id)
   const country = await countryService.getCountry(id)
   res.json(country)
@@ -33,8 +34,9 @@ export const getCountry = async (req: Request, res: Response, next: NextFunction
  * @param req
  * @param res
  */
-export const createCountry = async (req: Request, res: Response) => {
-  const newCountry = await countryService.createCountry((req.body))
+export const createCountry = async (req: Request, res: Response): Promise<void> => {
+  const { body } = req
+  const newCountry = await countryService.createCountry(body as CreateCountryDto)
   res.json(newCountry)
 }
 
@@ -43,9 +45,10 @@ export const createCountry = async (req: Request, res: Response) => {
  * @param req
  * @param res
  */
-export const updateCountry = async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id)
-  const updatedCountry = await countryService.updateCountry(id, req.body)
+export const updateCountry = async (req: Request, res: Response): Promise<void> => {
+  const { params: { id }, body } = req
+  // TODO: Cast to UpdateCountryDto
+  const updatedCountry = await countryService.updateCountry(Number.parseInt(id), body)
   res.json(updatedCountry)
 }
 
@@ -54,7 +57,8 @@ export const updateCountry = async (req: Request, res: Response) => {
  * @param req
  * @param res
  */
-export const deleteCountry = async (req: Request, res: Response) => {
+export const deleteCountry = async (req: Request, res: Response): Promise<void> => {
+  // TODO: SAME AS ABOVE
   const id = parseInt(req.params.id)
   const hardDelete = req.query.hard === 'true'
   const deletedCountry = await countryService.deleteCountry(id, hardDelete)

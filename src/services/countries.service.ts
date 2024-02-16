@@ -1,7 +1,8 @@
-import { type Country, type Prisma } from '@prisma/client'
+import { Prisma, type Country } from '@prisma/client'
 import { prisma } from '../db'
 import { NotFoundError, UnauthenticatedError } from '../utils/handleError'
 import { validatorCreateCountry, validatorDeleteCountry, validatorGetCountryByAbbreviation, validatorGetCountryById, validatorGetCountryByName, validatorUpdateCountry } from '../validators/countries.validator'
+import { type CreateCountryDto } from '../dtos/createCountry.dto'
 
 // --------------------------------------------------------------------//
 // --------------------------------------------------------------------//
@@ -60,7 +61,7 @@ export class CountryService implements ICountryService {
       where: validatorGetCountryById(id)
     })
 
-    if (!country) {
+    if (country === null) {
       throw new NotFoundError(`Country #${id} not found`)
     } else if (country.deleted) {
       throw new UnauthenticatedError(`You cannot access Country #${id} (soft deleted)`)
@@ -70,10 +71,8 @@ export class CountryService implements ICountryService {
   }
 
   // --------------------------------------------------//
-
   public async getCountry (id: Country['id']) {
-    const country = await this.findCountryById(id)
-    const { deleted, ...sanitizedCountry } = country
+    const { deleted, ...sanitizedCountry } = await this.findCountryById(id)
     return sanitizedCountry
   }
 
@@ -86,16 +85,8 @@ export class CountryService implements ICountryService {
       }
     })
 
-    if (!countries) {
-      throw new Error('Countries not found')
-    }
-
-    const sanitizedCountries = countries.map(country => {
-      const { deleted, ...sanitizedCountry } = country
-      return sanitizedCountry
-    })
-
-    return sanitizedCountries
+    if (countries.length === 0) throw new Error('Countries not found')
+    return countries.map(({ deleted, ...sanitizedCountry }) => sanitizedCountry)
   }
 
   // --------------------------------------------------//
@@ -124,6 +115,7 @@ export class CountryService implements ICountryService {
     //     }
     // }
 
+    // TODO: Wrap in  a try catch like create method
     const updatedCountry = await this.repo.country.update({
       where: validatorGetCountryById(id),
       data: validatorUpdateCountry(id, {
@@ -137,63 +129,68 @@ export class CountryService implements ICountryService {
 
   // --------------------------------------------------//
 
-  public async deleteCountry (id: Country['id'], hard?: boolean) {
-    const countryToDelete = await this.repo.country.findFirst({
-      where: validatorDeleteCountry(id)
-    })
+  public async deleteCountry (id: Country['id'], hard: boolean = false) {
+    // let deletedCountry
+    // if (hard) {
+    //   await prisma.visit.deleteMany({
+    //     where: { countryId: id }
+    //   })
+    //   deletedCountry = await prisma.country.delete({
+    //     where: validatorDeleteCountry(id),
+    //     select: countryOutputUser
+    //   })
+    // } else {
+    //   if (countryToDelete.deleted) {
+    //     throw new UnauthenticatedError(`You do not have permissions to delete Country #${id} (soft delete)`)
+    //   }
+    //   deletedCountry = await this.updateCountry(id, { deleted: true })
+    // }
 
-    if (!countryToDelete) {
-      throw new NotFoundError(`Country #${id} not found`)
-    }
+    // if (!deletedCountry) {
+    //   throw new Error(`Country #${id} could not be (soft) deleted`)
+    // }
 
-    let deletedCountry
+    // return deletedCountry
+
+
     if (hard) {
-      await prisma.visit.deleteMany({
-        where: { countryId: id }
-      })
-      deletedCountry = await prisma.country.delete({
+      return this.repo.country.delete({
         where: validatorDeleteCountry(id),
         select: countryOutputUser
-      })
+      });
     } else {
-      if (countryToDelete.deleted) {
-        throw new UnauthenticatedError(`You do not have permissions to delete Country #${id} (soft delete)`)
+      const updatedCountry = await this.repo.country.update({
+        where: validatorGetCountryById(id),
+        data: { deleted: true },
+        select: countryOutputUser
+      })
+
+      // Update the visits to the country
+      await this.repo.visit.updateMany({
+        where: { countryId: id },
+        data: { deleted: true }
+      })
+
+      return updatedCountry
+    }
+  }
+
+  // --------------------------------------------------//
+
+  public async createCountry (data: CreateCountryDto): Promise<Country> {
+    try {
+      const newCountry = await this.repo.country.create({
+        data: validatorCreateCountry(data)
+      })
+      return newCountry
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        if (err.code === 'P2002') {
+          // TODO: Create a custom error (AlreadyExistsError), throw here and properly handle it in the middleware
+          throw new Error(`Country with name "${data.name}" or abbreviation "${data.abbreviation}" already exists`)
+        }
       }
-      deletedCountry = await this.updateCountry(id, { deleted: true })
+      throw err
     }
-
-    if (!deletedCountry) {
-      throw new Error(`Country #${id} could not be (soft) deleted`)
-    }
-
-    return deletedCountry
   }
-
-  // --------------------------------------------------//
-
-  public async createCountry (data: Prisma.CountryCreateInput) {
-    const validatedData = validatorCreateCountry(data)
-
-    const { name, abbreviation } = validatedData
-    const countryWithSameName = await this.repo.country.findUnique({
-      where: { name }
-    })
-    if (countryWithSameName) {
-      throw new Error(`Country with name "${name}" already exists`)
-    }
-    const countryWithSameAbbreviation = await this.repo.country.findUnique({
-      where: { abbreviation }
-    })
-    if (countryWithSameAbbreviation) {
-      throw new Error(`Country with abbreviation "${abbreviation}" already exists`)
-    }
-
-    const newCountry = await this.repo.country.create({
-      data: validatorCreateCountry(data)
-    })
-
-    return newCountry
-  }
-
-  // --------------------------------------------------//
 }

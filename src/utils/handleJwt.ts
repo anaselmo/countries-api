@@ -12,7 +12,7 @@ export type JwtPayloadCustom = (JwtPayload & Tourist)
  * @param user
  * @returns
  */
-export const tokenSign = async (user: Tourist) => {
+export const tokenSign = (user: Tourist) => {
   const sign = jwt.sign(
     {
       id: user.id
@@ -32,7 +32,7 @@ export const tokenSign = async (user: Tourist) => {
  * @param tokenJwt
  * @returns
  */
-export const verifyToken = async (tokenJwt: string) => {
+export const verifyToken = (tokenJwt: string) => {
   try {
     return jwt.verify(tokenJwt, JWT_SECRET) as JwtPayloadCustom
   } catch (err) {
