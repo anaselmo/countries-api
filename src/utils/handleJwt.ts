@@ -3,7 +3,8 @@ import dotenv from 'dotenv'
 import { type Tourist } from '@prisma/client'
 dotenv.config()
 
-const JWT_SECRET = process.env.JWT_SECRET ?? 'JWT_SECRET'
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+const JWT_SECRET = process.env.JWT_SECRET!
 
 export type JwtPayloadCustom = (JwtPayload & Tourist)
 
