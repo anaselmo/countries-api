@@ -1,13 +1,9 @@
 import jwt, { JwtPayload } from "jsonwebtoken";
 import dotenv from "dotenv"
-import { Prisma, Tourist } from "@prisma/client";
+import { Tourist } from "@prisma/client";
 dotenv.config();
-// import { getProperties } from "./handlePropertiesEngine";
 
-// const propertiesKey = getProperties();
-const JWT_SECRET = process.env.JWT_SECRET || "falta JWT";
-// const ID_KEY = (propertiesKey.id); // ?Preguntar
-
+const JWT_SECRET = process.env.JWT_SECRET ?? "JWT_SECRET";
 
 
 export type JwtPayloadCustom = (JwtPayload & Tourist);
@@ -25,7 +21,7 @@ export const tokenSign = async (user: Tourist) => {
         },
         JWT_SECRET,
         {
-            expiresIn: "2h"
+            expiresIn: "24h"
         }
     );
     

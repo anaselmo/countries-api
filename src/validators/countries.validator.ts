@@ -34,3 +34,15 @@ export const validatorUpdateCountry = (id: number, dataCountry: Prisma.CountryUp
         dataCountry
     );
 };
+
+export const validatorGetCountryByName = (name: Country["name"]) => {
+    return Prisma.validator<Country["name"]>()(
+        name
+    );
+};
+
+export const validatorGetCountryByAbbreviation = (abbreviation: Country["abbreviation"]) => {
+    return Prisma.validator<Country["abbreviation"]>()(
+        abbreviation
+    );
+};

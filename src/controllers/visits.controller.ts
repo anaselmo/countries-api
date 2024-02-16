@@ -34,7 +34,7 @@ export const getAllVisits = async (req: Request, res: Response) => {
 export const getVisitsToCountry = async (req: Request, res: Response) => {
     const loggedTourist = res.locals.dataToken;
     const touristId = loggedTourist.id;
-    const countryId = parseInt(req.params.id);
+    const countryId = parseInt(req.params.countryId);
     const visit = await touristService.getVisitsToCountry(
         touristId, 
         countryId

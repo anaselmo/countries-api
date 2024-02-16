@@ -11,9 +11,9 @@ const router = Router();
 router.get("/", authMiddleware, handleError(getAllVisits));
 
 /**
- * Obtener la información de una visita por su id
+ * Obtener la información de las visitas al pais con id "countryId"
  */
-router.get("/:id", authMiddleware, handleError(getVisitsToCountry));
+router.get("/:countryId", authMiddleware, handleError(getVisitsToCountry));
 
 /**
  * Crear una visita

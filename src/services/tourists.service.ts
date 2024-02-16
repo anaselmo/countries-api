@@ -4,7 +4,7 @@ import { NotFoundError, UnauthenticatedError } from "../utils/handleError";
 import { validatorCreateTourist, validatorDeleteTourist, validatorGetTouristById, validatorLoginTourist, validatorUpdateTourist } from "../validators/tourists.validator";
 import { comparePasswords, encrypt } from "../utils/handlePassword";
 import { tokenSign } from "../utils/handleJwt";
-import { validatorDeleteVisit, validatorGetVisitById } from "../validators/visits.validator";
+import { validatorCreateVisit, validatorDeleteVisit, validatorGetVisitById, validatorUpdateVisit } from "../validators/visits.validator";
 import { validatorGetCountryById } from "../validators/countries.validator";
 
 //--------------------------------------------------------------------//
@@ -72,6 +72,13 @@ const touristOutputUser = {
     email: true
 }
 
+const visitOutputUser = {
+    id: true,
+    date: true,
+    countryId: true,
+    touristId: true
+}
+
 //--------------------------------------------------------------------//
 
 export class TouristService implements ITouristService {
@@ -133,16 +140,24 @@ export class TouristService implements ITouristService {
         if (hard) {
             await this.repo.visit.deleteMany({
                 where: { touristId: id }
-            })
+            });
             deletedTourist = await this.repo.tourist.delete({
                 where: validatorDeleteTourist(id),
                 select: touristOutputUser
             });
         } else {
             if (touristToDelete.deleted) {
-                throw new UnauthenticatedError(`You do not have permissions to delete Tourist #${id}`);
+                throw new UnauthenticatedError(`You do not have permissions to delete Tourist #${id} (soft deleted)`);
             }
-            deletedTourist = await this.updateTourist(id, { deleted: true });
+
+            await this.repo.visit.updateMany({
+                where: { touristId: id },
+                data: { deleted: true }
+            });
+            deletedTourist = await this.updateTourist(
+                id, 
+                { deleted: true }
+            );
         }
 
         if (!deletedTourist) {
@@ -155,11 +170,24 @@ export class TouristService implements ITouristService {
     //--------------------------------------------------//
 
     public async registerTourist(data: Prisma.TouristCreateInput) {
-        const password = await encrypt(data.password);
-        const dataWithPasswordHash = {...data, password};
+        const { name, email, password } = data;
+        
+        const touristWithSameEmail = await this.repo.tourist.findUnique({
+            where: { email }
+        });
+
+        if (touristWithSameEmail) {
+            throw new Error(`A tourist with email "${email}" alredy exists`);
+        }
+
+        const hashedPassword = await encrypt(password);
 
         const newTourist = await this.repo.tourist.create({
-            data: validatorCreateTourist(dataWithPasswordHash),
+            data: validatorCreateTourist({
+                name,
+                email,
+                password: hashedPassword
+            }),
             // select: touristOutputInfo
         });
 
@@ -174,19 +202,27 @@ export class TouristService implements ITouristService {
     //--------------------------------------------------//
 
     public async loginTourist(data: TouristLoginInput) {
-        const validatedData = validatorLoginTourist(data);
+        const { email, password } = data;
+        if (!email) {
+            throw new Error("Email is needed to login");
+        }
         const loggedTourist = await this.repo.tourist.findUnique({
             where: {
-                email: validatedData.email
+                email,
+                deleted: false
             }
         });
 
         if (!loggedTourist) {
-            throw new NotFoundError(`Tourist not found`);
+            throw new NotFoundError(`Tourist with email "${email}" not found`);
+        }
+
+        if (!password) {
+            throw new Error("Password is needed to login");
         }
 
         const check = await comparePasswords(
-            validatedData.password, 
+            password, 
             loggedTourist.password
         );
 
@@ -204,8 +240,10 @@ export class TouristService implements ITouristService {
 
     public async getAllVisits(id: Tourist["id"]) {
         await this.findTouristById(id);
+        console.log({id});
         const visits = await this.repo.visit.findMany({
-            where: { touristId: id }
+            where: { touristId: id, deleted: false},
+            select: visitOutputUser
         });
         if (!visits) {
             throw new NotFoundError(`Tourist #${id} has visited no contries.`)
@@ -220,14 +258,11 @@ export class TouristService implements ITouristService {
         await this.findCountryById(countryId);
 
         const visitsToCountry = await this.repo.visit.findMany({
-            where: { countryId, touristId }
+            where: { countryId, touristId, deleted: false }
         });
         if (!visitsToCountry) {
             throw new NotFoundError(`Tourist #${touristId} has not visited Country #${countryId}.`);
-        } 
-        // else if (visit.deleted) {
-        //     throw new UnauthenticatedError(`Tourist #${touristId} not authorized: Visit #${visit.id} was soft deleted`);
-        // }
+        }
 
         return visitsToCountry;
     }
@@ -252,7 +287,8 @@ export class TouristService implements ITouristService {
                 tourist: {
                     connect: { id: touristId},
                 },
-            }
+            },
+            select: visitOutputUser
         });
         if (!newVisit) {
             throw new NotFoundError(`Tourist #${touristId} could not create a visit to Country #${countryId}.`);
@@ -274,13 +310,14 @@ export class TouristService implements ITouristService {
 
         const { date } = data;
         const updatedVisit = await this.repo.visit.update({
-            where: { id },
-            data: {
-                country: {
+            where: validatorGetVisitById(id),
+            data: validatorUpdateVisit(
+                id, 
+                {country: {
                     connect: { id: countryId},
                 },
                 date
-            }
+            })
         });
         if (!updatedVisit) {
             throw new NotFoundError(`Tourist #${touristId} could not update the Visit #${id}.`);
@@ -290,6 +327,7 @@ export class TouristService implements ITouristService {
     }
 
     //--------------------------------------------------//
+    // TODO: El token sigue funcionando
 
     public async deleteVisit(id: Visit["id"], touristId: Tourist["id"], hard?: boolean) {
         await this.findTouristById(touristId);
@@ -375,7 +413,7 @@ export class TouristService implements ITouristService {
         });
 
         if (!country) {
-            throw new NotFoundError(`Country not found`);
+            throw new NotFoundError(`Country #${id} not found`);
         } else if (country.deleted) {
             throw new UnauthenticatedError(`You cannot access Country #${id} (soft deleted)`);
         }

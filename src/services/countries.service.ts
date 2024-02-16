@@ -1,7 +1,7 @@
 import { Country, Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { NotFoundError, UnauthenticatedError } from "../utils/handleError";
-import { validatorCreateCountry, validatorDeleteCountry, validatorGetCountryById, validatorUpdateCountry } from "../validators/countries.validator";
+import { validatorCreateCountry, validatorDeleteCountry, validatorGetCountryByAbbreviation, validatorGetCountryById, validatorGetCountryByName, validatorUpdateCountry } from "../validators/countries.validator";
 
 //--------------------------------------------------------------------//
 //--------------------------------------------------------------------//
@@ -61,7 +61,7 @@ export class CountryService implements ICountryService {
         });
 
         if (!country) {
-            throw new NotFoundError(`Country not found`);
+            throw new NotFoundError(`Country #${id} not found`);
         } else if (country.deleted) {
             throw new UnauthenticatedError(`You cannot access Country #${id} (soft deleted)`);
         }
@@ -80,7 +80,11 @@ export class CountryService implements ICountryService {
     //--------------------------------------------------//
 
     public async getCountries() {
-        const countries = await this.repo.country.findMany({});
+        const countries = await this.repo.country.findMany({
+            where: {
+                deleted: false
+            }
+        });
 
         if (!countries) {
             throw new Error("Countries not found");
@@ -99,9 +103,32 @@ export class CountryService implements ICountryService {
     public async updateCountry(id: Country["id"], data: Prisma.CountryUpdateInput) {
         await this.findCountryById(id);
 
+        const { name, abbreviation, capital } = data;
+
+        // TODO: Preguntar a Germán
+        // if (name){ 
+        //     const countryWithSameName = await this.repo.country.findUnique({
+        //         where: validatorGetCountryByName(name)
+        //     });
+        //     if (countryWithSameName) {
+        //         throw new Error(`Country with name "${name}" already exists`);
+        //     }
+        // }
+
+        // if (abbreviation) {
+        //     const countryWithSameAbbreviation = await this.repo.country.findUnique({
+        //         where: validatorGetCountryByAbbreviation(abbreviation)
+        //     });
+        //     if (countryWithSameAbbreviation) {
+        //         throw new Error(`Country with abbreviation "${abbreviation}" already exists`);
+        //     }
+        // }
+        
         const updatedCountry = await this.repo.country.update({
             where: validatorGetCountryById(id),
-            data: validatorUpdateCountry(id, data),
+            data: validatorUpdateCountry(id, {
+                name, abbreviation, capital
+            }),
             select: countryOutputUser
         });
 
