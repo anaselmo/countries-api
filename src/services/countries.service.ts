@@ -10,21 +10,18 @@ export class CountryService implements ICountryService {
   constructor (private readonly repo: typeof prisma) {}
 
   public async getCountry (id: Country['id']): Promise<CountryOutputDto> {
-    // TODO: try catch?
-    return sanitizeCountry(await this.repo.country.findFirstOrThrow({
+    const country = await this.repo.country.findFirst({
       where: { id, deleted: false }
-    }))
+    })
+    if (country === null) throw new NotFoundError(`Country with id #${id} not found`)
+    return sanitizeCountry(country)
   }
 
   public async getCountries (): Promise<CountryOutputDto[]> {
-    // TODO: try catch?
     const countries = await this.repo.country.findMany({
-      where: {
-        deleted: false
-      }
+      where: { deleted: false }
     })
-
-    if (countries.length === 0) throw new Error('Countries not found')
+    if (countries.length === 0) throw new NotFoundError('Countries not found')
     return countries.map(country => sanitizeCountry(country))
   }
 
@@ -55,7 +52,6 @@ export class CountryService implements ICountryService {
       where: { id },
       data: { deleted: true }
     })
-
     await this.repo.visit.updateMany({
       where: { countryId: id },
       data: { deleted: true }
