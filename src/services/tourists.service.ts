@@ -1,73 +1,15 @@
-import { type Tourist, type Prisma, type Visit, type Country, PrismaClient } from '@prisma/client'
-import { type prisma } from '../db'
-import { NotFoundError, UnauthenticatedError } from '../utils/handleError'
-import { validatorCreateTourist, validatorDeleteTourist, validatorGetTouristById, validatorLoginTourist, validatorUpdateTourist } from '../validators/tourists.validator'
+import { type Tourist, Prisma, type Visit, type Country } from '@prisma/client'
+import type { prisma } from '../db'
+import { AlreadyExistsError, NotFoundError, UnauthenticatedError } from '../utils/handleError'
 import { comparePasswords, encrypt } from '../utils/handlePassword'
 import { tokenSign } from '../utils/handleJwt'
-import { validatorCreateVisit, validatorDeleteVisit, validatorGetVisitById, validatorUpdateVisit } from '../validators/visits.validator'
-import { validatorGetCountryById } from '../validators/countries.validator'
-
-export interface ITouristService {
-  getTourist: (id: Tourist['id']) => Promise<TouristOutputUser>
-  getTourists: () => Promise<TouristOutputUser[]>
-  updateTourist: (
-    id: Tourist['id'],
-    data: Prisma.TouristUpdateInput
-  ) => Promise<TouristOutputUser>
-  deleteTourist: (
-    id: Tourist['id'],
-    hard?: boolean
-  ) => Promise<TouristOutputUser>
-  registerTourist: (
-    data: Prisma.TouristCreateInput
-  ) => Promise<TouristResponse>
-  loginTourist: (
-    data: TouristLoginInput
-  ) => Promise<TouristResponse>
-}
-
-// --------------------------------------------------//
-
-// type TouristOutputAdmin = {
-//     id: number,
-//     name: string | null,
-//     email: string,
-//     deleted: boolean
-// }
-
-interface TouristOutputUser {
-  id: number
-  name: string | null
-  email: string
-}
-
-// --------------------------------------------------//
-
-interface TouristLoginInput {
-  name: string | null
-  email: string
-  password: string
-}
-
-interface TouristResponse {
-  data: TouristOutputUser
-  token: string
-}
-
-// --------------------------------------------------//
-
-const touristOutputAdmin = {
-  id: true,
-  name: true,
-  email: true,
-  deleted: true
-}
-
-const touristOutputUser = {
-  id: true,
-  name: true,
-  email: true
-}
+import type { LoginTouristDto } from '../dtos/loginTourist.dto'
+import type { ITouristService, TouristOutputDto } from '../dtos/touristService.dto'
+import type { UpdateTouristDto } from '../dtos/updateTourist.dto'
+import type { VisitOutputDto } from '../dtos/visitOutput.dto'
+import { sanitizeData } from '../utils/sanitizeData'
+import type { RegisterTouristDto } from '../dtos/registerTourist.dto'
+import type { UpdateVisitDto } from '../dtos/updateVisit.dto'
 
 const visitOutputUser = {
   id: true,
@@ -76,364 +18,252 @@ const visitOutputUser = {
   touristId: true
 }
 
-// --------------------------------------------------------------------//
-
 export class TouristService implements ITouristService {
   constructor (private readonly repo: typeof prisma) {}
 
-  // --------------------------------------------------//
-
-  public async getTourist (id: Tourist['id']) {
-    const tourist = await this.findTouristById(id)
-    const { deleted, ...sanitizedTourist } = tourist
-    return sanitizedTourist
+  /**
+   *
+   * @param id
+   * @returns
+   */
+  public async getTourist (id: Tourist['id']): Promise<TouristOutputDto> {
+    return sanitizeData(await this.repo.tourist.findFirstOrThrow({
+      where: { id, deleted: false }
+    }), 'deleted', 'password')
   }
 
-  // --------------------------------------------------//
-
-  public async getTourists () {
+  /**
+   *
+   * @returns
+   */
+  public async getTourists (): Promise<TouristOutputDto[]> {
     const tourists = await this.repo.tourist.findMany({
-      select: touristOutputAdmin
+      where: { deleted: false }
     })
-
-    if (!tourists) {
-      throw new Error('Tourists not found')
-    }
-
-    const sanitizedTourists = tourists.map(tourist => {
-      const { deleted, ...sanitizedTourist } = tourist
-      return sanitizedTourist
-    })
-
-    return sanitizedTourists
+    if (tourists.length === 0) throw new NotFoundError('Countries not found')
+    return tourists.map(tourist => sanitizeData(tourist, 'deleted', 'password'))
   }
 
-  // --------------------------------------------------//
-
-  public async updateTourist (id: Tourist['id'], data: Prisma.TouristUpdateInput) {
-    await this.findTouristById(id)
-    const updatedTourist = await this.repo.tourist.update({
-      where: validatorGetTouristById(id),
-      data: validatorUpdateTourist(id, data),
-      select: touristOutputUser
-    })
-    return updatedTourist
+  /**
+   *
+   * @param id
+   * @param data
+   * @returns
+   */
+  public async updateTourist (id: Tourist['id'], data: UpdateTouristDto): Promise<TouristOutputDto> {
+    try {
+      return sanitizeData(await this.repo.tourist.update({
+        where: { id },
+        data
+      }), 'deleted', 'password')
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        console.log(err.code) // TODO: check the code
+      }
+      throw err
+    }
   }
 
-  // --------------------------------------------------//
-
-  public async deleteTourist (id: Tourist['id'], hard?: boolean) {
-    const touristToDelete = await this.repo.tourist.findFirst({
-      where: validatorDeleteTourist(id)
-    })
-
-    if (!touristToDelete) {
-      throw new NotFoundError(`Tourist #${id} not found`)
-    } else if (touristToDelete.id !== id) {
-      throw new UnauthenticatedError(`You are not authorized to delete Tourist #${touristToDelete.id}`)
-    }
-
-    let deletedTourist
-    if (hard) {
-      await this.repo.visit.deleteMany({
-        where: { touristId: id }
-      })
-      deletedTourist = await this.repo.tourist.delete({
-        where: validatorDeleteTourist(id),
-        select: touristOutputUser
-      })
-    } else {
-      if (touristToDelete.deleted) {
-        throw new UnauthenticatedError(`You do not have permissions to delete Tourist #${id} (soft deleted)`)
+  /**
+   *
+   * @param id
+   * @param hard
+   * @returns
+   */
+  // TODO: El token sigue funcionando. Crear 'deletedAt' en Tourist para invalidar el token
+  public async deleteTourist (id: Tourist['id'], hard?: boolean): Promise<TouristOutputDto> {
+    try {
+      if (hard === true) {
+        return sanitizeData(
+          await this.repo.tourist.delete({ where: { id } }),
+          'deleted', 'password'
+        )
       }
 
-      await this.repo.visit.updateMany({
-        where: { touristId: id },
+      const updatedTourist = await this.repo.tourist.update({
+        where: { id },
         data: { deleted: true }
       })
-      deletedTourist = await this.updateTourist(
-        id,
-        { deleted: true }
-      )
-    }
 
-    if (!deletedTourist) {
-      throw new Error(`Tourist #${id} could not be (soft) deleted`)
-    }
-
-    return deletedTourist
-  }
-
-  // --------------------------------------------------//
-
-  public async registerTourist (data: Prisma.TouristCreateInput) {
-    const { name, email, password } = data
-
-    const touristWithSameEmail = await this.repo.tourist.findUnique({
-      where: { email }
-    })
-
-    if (touristWithSameEmail) {
-      throw new Error(`A tourist with email "${email}" alredy exists`)
-    }
-
-    const hashedPassword = await encrypt(password)
-
-    const newTourist = await this.repo.tourist.create({
-      data: validatorCreateTourist({
-        name,
-        email,
-        password: hashedPassword
+      // Update the visits to the tourist
+      await this.repo.visit.updateMany({
+        where: { countryId: id },
+        data: { deleted: true }
       })
-      // select: touristOutputInfo
-    })
 
-    if (!newTourist) {
-      throw new Error('Tourist could not be registered')
+      return sanitizeData(updatedTourist, 'deleted', 'password')
+    } catch (err) {
+      // TODO
+      throw new Error('TODO')
     }
-
-    const token = await tokenSign(newTourist)
-    return { data: newTourist, token }
   }
 
-  // --------------------------------------------------//
-
-  public async loginTourist (data: TouristLoginInput) {
-    const { email, password } = data
-    if (!email) {
-      throw new Error('Email is needed to login')
-    }
-    const loggedTourist = await this.repo.tourist.findUnique({
-      where: {
-        email,
-        deleted: false
+  /**
+   *
+   * @param data
+   * @returns
+   */
+  public async registerTourist (data: RegisterTouristDto): Promise<TouristOutputDto> {
+    try {
+      return sanitizeData(await this.repo.tourist.create({
+        data: {
+          ...data,
+          password: await encrypt(data.password)
+        }
+      }), 'deleted')
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        if (err.code === 'P2010') {
+          throw new NotFoundError(`Tourist with email "#${data.email}" not found`)
+        }
       }
-    })
-
-    if (!loggedTourist) {
-      throw new NotFoundError(`Tourist with email "${email}" not found`)
-    }
-
-    if (!password) {
-      throw new Error('Password is needed to login')
-    }
-
-    const check = await comparePasswords(
-      password,
-      loggedTourist.password
-    )
-
-    if (!check) {
-      throw new UnauthenticatedError('Invalid password')
-    }
-
-    const token = await tokenSign(loggedTourist)
-    return {
-      data: loggedTourist, token
+      throw err
     }
   }
 
-  // --------------------------------------------------//
+  /**
+   *
+   * @param data
+   * @returns
+   */
+  public async loginTourist (data: LoginTouristDto): Promise<string> {
+    try {
+      const tourist = await this.repo.tourist.findUniqueOrThrow({
+        where: {
+          email: data.email,
+          deleted: false
+        }
+      })
 
-  public async getAllVisits (id: Tourist['id']) {
-    await this.findTouristById(id)
-    console.log({ id })
+      if (!(await comparePasswords(data.password, tourist.password))) {
+        throw new UnauthenticatedError('Invalid password')
+      }
+
+      return tokenSign(tourist)
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        if (err.code === 'P2002') {
+          throw new AlreadyExistsError(`A tourist with ${data.email} already exists`)
+        }
+      }
+      throw err
+    }
+  }
+
+  /**
+   *
+   * @param id
+   * @returns
+   */
+  public async getAllVisits (id: Tourist['id']): Promise<VisitOutputDto[]> {
+    // TODO: should i check the tourist exists?
     const visits = await this.repo.visit.findMany({
       where: { touristId: id, deleted: false },
       select: visitOutputUser
     })
-    if (!visits) {
-      throw new NotFoundError(`Tourist #${id} has visited no contries.`)
+    if (visits.length === 0) {
+      throw new NotFoundError(`Tourists #${id} has visited no contries.`)
     }
     return visits
   }
 
-  // --------------------------------------------------//
-
-  public async getVisitsToCountry (touristId: Tourist['id'], countryId: Country['id']) {
-    await this.findTouristById(touristId)
-    await this.findCountryById(countryId)
+  /**
+   *
+   * @param touristId
+   * @param countryId
+   * @returns
+   */
+  public async getVisitsToCountry (touristId: Tourist['id'], countryId: Country['id']): Promise<VisitOutputDto[]> {
+    if ((await this.repo.country.findFirst({
+      where: {
+        id: countryId,
+        deleted: false
+      }
+    })) === null) {
+      throw new NotFoundError(`Country #${countryId} not found`)
+    }
 
     const visitsToCountry = await this.repo.visit.findMany({
       where: { countryId, touristId, deleted: false }
     })
-    if (!visitsToCountry) {
+    if (visitsToCountry.length === 0) {
       throw new NotFoundError(`Tourist #${touristId} has not visited Country #${countryId}.`)
     }
 
     return visitsToCountry
   }
 
-  // --------------------------------------------------//
-
-  public async createVisit (touristId: Tourist['id'], countryId: Country['id'], data: Prisma.VisitCreateInput) {
-    await this.findTouristById(touristId)
-    await this.findCountryById(countryId)
-
-    const { date } = data
-    if (date) {
-      await this.checkVisitByUnique(date, countryId, touristId)
-    }
-
-    const newVisit = await this.repo.visit.create({
-      data: {
-        ...data,
-        country: {
-          connect: { id: countryId }
-        },
-        tourist: {
-          connect: { id: touristId }
-        }
-      },
-      select: visitOutputUser
-    })
-    if (!newVisit) {
-      throw new NotFoundError(`Tourist #${touristId} could not create a visit to Country #${countryId}.`)
-    }
-
-    return newVisit
-  }
-
-  // --------------------------------------------------//
-
-  public async updateVisit (id: Visit['id'], touristId: Tourist['id'], data: { countryId?: number, date?: Date }) {
-    await this.findVisitById(id)
-    await this.findTouristById(touristId)
-
-    const { countryId } = data
-    if (countryId) {
-      await this.findCountryById(countryId)
-    }
-
-    const { date } = data
-    const updatedVisit = await this.repo.visit.update({
-      where: validatorGetVisitById(id),
-      data: validatorUpdateVisit(
-        id,
-        {
+  /**
+   *
+   * @param touristId
+   * @param countryId
+   * @param date
+   * @returns
+   */
+  public async createVisit (touristId: Tourist['id'], countryId: Country['id'], date: Visit['date'] | undefined): Promise<VisitOutputDto> {
+    try {
+      return sanitizeData(await this.repo.visit.create({
+        data: {
+          date,
           country: {
             connect: { id: countryId }
           },
-          date
-        })
-    })
-    if (!updatedVisit) {
-      throw new NotFoundError(`Tourist #${touristId} could not update the Visit #${id}.`)
+          tourist: {
+            connect: { id: touristId }
+          }
+        }
+      }), 'deleted')
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        if (err.code === 'P2010') {
+          throw new NotFoundError(`Tourist #${touristId} or Country #${countryId} not found`)
+        }
+      }
+      throw err
     }
+  }
+
+  /**
+   *
+   * @param id
+   * @param touristId
+   * @param data
+   * @returns
+   */
+  public async updateVisit (id: Visit['id'], touristId: Tourist['id'], data: UpdateVisitDto): Promise<VisitOutputDto> {
+    const { countryId, date } = data
+    const updatedVisit = await this.repo.visit.update({
+      where: { id },
+      data: {
+        country: {
+          connect: { id: countryId }
+        },
+        date
+      }
+    })
 
     return updatedVisit
   }
 
-  // --------------------------------------------------//
-  // TODO: El token sigue funcionando
-
-  public async deleteVisit (id: Visit['id'], touristId: Tourist['id'], hard?: boolean) {
-    await this.findTouristById(touristId)
-
-    const visitToDelete = await this.repo.visit.findFirst({
-      where: validatorDeleteVisit(id)
-    })
-
-    if (!visitToDelete) {
-      throw new NotFoundError(`Visit #${id} not found`)
-    } else if (visitToDelete.id !== id) {
-      throw new UnauthenticatedError(`You are not authorized to delete Visit #${visitToDelete.id}`)
-    }
-
-    let deletedVisit
-    if (hard) {
-      deletedVisit = await this.repo.visit.delete({
-        where: validatorGetVisitById(id)
-      })
-    } else {
-      if (visitToDelete.deleted) {
-        throw new UnauthenticatedError(`Tourist #${touristId} not authorized: Visit #${id} was soft deleted`)
-      }
-      deletedVisit = await this.repo.visit.update({
-        where: validatorGetVisitById(id),
-        data: {
-          deleted: true
-        }
+  /**
+   *
+   * @param id
+   * @param touristId
+   * @param hard
+   * @returns
+   */
+  public async deleteVisit (id: Visit['id'], touristId: Tourist['id'], hard?: boolean): Promise<VisitOutputDto> {
+    if (hard === true) {
+      return await this.repo.visit.delete({
+        where: { id }
       })
     }
 
-    if (!deletedVisit) {
-      throw new Error(`Visit #${id} could not be (soft) deleted`)
-    }
-
-    return deletedVisit
-  }
-
-  // --------------------------------------------------//
-  // ----------------- PRIVATE METHODS ----------------//
-  // --------------------------------------------------//
-
-  private async checkVisitByUnique (date: string | Visit['date'], countryId: number, touristId: number) {
-    const visit = await this.repo.visit.findUnique({
-      where: {
-        date_countryId_touristId: {
-          date,
-          countryId,
-          touristId
-        }
-      }
+    const updatedVisit = await this.repo.visit.update({
+      where: { id },
+      data: { deleted: true }
     })
 
-    if (visit) {
-      throw new Error(`Visit with Country #${countryId}, Tourist #${touristId} and Date:"${date}" already exists`)
-    }
+    return sanitizeData(updatedVisit, 'deleted')
   }
-
-  // --------------------------------------------------//
-
-  private async findTouristById (id: Tourist['id']) {
-    const tourist = await this.repo.tourist.findFirst({
-      where: validatorGetTouristById(id),
-      select: touristOutputAdmin
-    })
-
-    if (!tourist) {
-      throw new NotFoundError(`Tourist #${id} not found`)
-    }
-
-    if (tourist.deleted) {
-      throw new UnauthenticatedError(`You do not have permissions to access Tourist #${id} (soft deleted)`)
-    }
-
-    return tourist
-  }
-
-  // --------------------------------------------------//
-
-  private async findCountryById (id: Country['id']) {
-    const country = await this.repo.country.findFirst({
-      where: validatorGetCountryById(id)
-    })
-
-    if (!country) {
-      throw new NotFoundError(`Country #${id} not found`)
-    } else if (country.deleted) {
-      throw new UnauthenticatedError(`You cannot access Country #${id} (soft deleted)`)
-    }
-
-    return country
-  }
-
-  // --------------------------------------------------//
-
-  private async findVisitById (id: Visit['id']) {
-    const visit = await this.repo.visit.findFirst({
-      where: validatorGetVisitById(id)
-    })
-
-    if (!visit) {
-      throw new NotFoundError('Visit not found')
-    } else if (visit.deleted) {
-      throw new UnauthenticatedError(`You cannot access Visit #${id} (soft deleted)`)
-    }
-
-    return visit
-  }
-
-  // --------------------------------------------------//
 }

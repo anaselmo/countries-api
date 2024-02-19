@@ -32,3 +32,9 @@ export class UnauthenticatedError extends Error {
     super(msg ?? 'UNAUNTHENTICATED')
   }
 };
+
+export class AlreadyExistsError extends Error {
+  constructor (msg?: string) {
+    super(msg ?? 'RESOURCE_CONFLICT')
+  }
+};

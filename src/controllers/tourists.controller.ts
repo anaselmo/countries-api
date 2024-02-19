@@ -27,6 +27,7 @@ export const registerTourist = async (req: Request, res: Response): Promise<void
 
 export const loginTourist = async (req: Request, res: Response): Promise<void> => {
   const { body } = req
+  console.log({ loginBody: body })
   const loggedTourist = await touristService.loginTourist(body as LoginTouristDto)
   res.json(loggedTourist)
 }
