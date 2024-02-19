@@ -4,7 +4,7 @@ import { AlreadyExistsError, NotFoundError, UnauthenticatedError } from '../util
 import type { CreateCountryDto } from '../dtos/createCountry.dto'
 import type { UpdateCountryDto } from '../dtos/updateCountry.dto'
 import type { CountryOutputDto, ICountryService } from '../dtos/countryService.dto'
-import { sanitizeData } from '../utils/sanitizeData'
+import { sanitizeCountry } from '../utils/sanitizeData'
 
 export class CountryService implements ICountryService {
   constructor (private readonly repo: typeof prisma) {} // tb Prisma
@@ -30,9 +30,9 @@ export class CountryService implements ICountryService {
     // // const { deleted, ...sanitizedCountry } = await this.findCountryById(id)
     // // return sanitizedCountry
     // TODO: try catch?
-    return sanitizeData(await this.repo.country.findFirstOrThrow({
+    return sanitizeCountry(await this.repo.country.findFirstOrThrow({
       where: { id, deleted: false }
-    }), 'deleted')
+    }))
   }
 
   // --------------------------------------------------//
@@ -46,17 +46,17 @@ export class CountryService implements ICountryService {
     })
 
     if (countries.length === 0) throw new Error('Countries not found')
-    return countries.map(country => sanitizeData(country, 'deleted'))
+    return countries.map(country => sanitizeCountry(country))
   }
 
   // --------------------------------------------------//
 
   public async updateCountry (id: Country['id'], data: UpdateCountryDto): Promise<CountryOutputDto> {
     try {
-      return sanitizeData(await this.repo.country.update({
+      return sanitizeCountry(await this.repo.country.update({
         where: { id },
         data
-      }), 'deleted')
+      }))
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError) {
         if (err.code === 'P2010') {
@@ -71,9 +71,9 @@ export class CountryService implements ICountryService {
 
   public async deleteCountry (id: Country['id'], hard: boolean = false): Promise<CountryOutputDto> {
     if (hard) {
-      return sanitizeData(await this.repo.country.delete({
+      return sanitizeCountry(await this.repo.country.delete({
         where: { id }
-      }), 'deleted')
+      }))
     }
 
     const updatedCountry = await this.repo.country.update({
@@ -86,16 +86,16 @@ export class CountryService implements ICountryService {
       data: { deleted: true }
     })
 
-    return sanitizeData(updatedCountry, 'deleted')
+    return sanitizeCountry(updatedCountry)
   }
 
   // --------------------------------------------------//
 
   public async createCountry (data: CreateCountryDto): Promise<CountryOutputDto> {
     try {
-      return sanitizeData(await this.repo.country.create({
+      return sanitizeCountry(await this.repo.country.create({
         data
-      }), 'deleted')
+      }))
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError) {
         if (err.code === 'P2002') {
