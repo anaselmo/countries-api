@@ -35,6 +35,6 @@ export class UnauthenticatedError extends Error {
 
 export class AlreadyExistsError extends Error {
   constructor (msg?: string) {
-    super(msg ?? 'RESOURCE_CONFLICT')
+    super(msg ?? 'RESOURCE_ALREADY_EXISTS')
   }
 };
