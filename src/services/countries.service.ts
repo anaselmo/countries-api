@@ -1,41 +1,20 @@
 import { Prisma, type Country } from '@prisma/client'
 import type { prisma } from '../db'
-import { AlreadyExistsError, NotFoundError, UnauthenticatedError } from '../utils/handleError'
+import { AlreadyExistsError, NotFoundError } from '../utils/handleError'
 import type { CreateCountryDto } from '../dtos/createCountry.dto'
 import type { UpdateCountryDto } from '../dtos/updateCountry.dto'
 import type { CountryOutputDto, ICountryService } from '../dtos/countryService.dto'
 import { sanitizeCountry } from '../utils/sanitizeData'
 
 export class CountryService implements ICountryService {
-  constructor (private readonly repo: typeof prisma) {} // tb Prisma
+  constructor (private readonly repo: typeof prisma) {}
 
-  // --------------------------------------------------//
-
-  private async findCountryById (id: Country['id']): Promise<Country> {
-    const country = await this.repo.country.findFirst({
-      where: { id }
-    })
-
-    if (country === null) {
-      throw new NotFoundError(`Country #${id} not found`)
-    } else if (country.deleted) {
-      throw new UnauthenticatedError(`You cannot access Country #${id} (soft deleted)`)
-    }
-
-    return country
-  }
-
-  // --------------------------------------------------//
   public async getCountry (id: Country['id']): Promise<CountryOutputDto> {
-    // // const { deleted, ...sanitizedCountry } = await this.findCountryById(id)
-    // // return sanitizedCountry
     // TODO: try catch?
     return sanitizeCountry(await this.repo.country.findFirstOrThrow({
       where: { id, deleted: false }
     }))
   }
-
-  // --------------------------------------------------//
 
   public async getCountries (): Promise<CountryOutputDto[]> {
     // TODO: try catch?
@@ -48,8 +27,6 @@ export class CountryService implements ICountryService {
     if (countries.length === 0) throw new Error('Countries not found')
     return countries.map(country => sanitizeCountry(country))
   }
-
-  // --------------------------------------------------//
 
   public async updateCountry (id: Country['id'], data: UpdateCountryDto): Promise<CountryOutputDto> {
     try {
@@ -66,8 +43,6 @@ export class CountryService implements ICountryService {
       throw err
     }
   }
-
-  // --------------------------------------------------//
 
   public async deleteCountry (id: Country['id'], hard: boolean = false): Promise<CountryOutputDto> {
     if (hard) {
@@ -88,8 +63,6 @@ export class CountryService implements ICountryService {
 
     return sanitizeCountry(updatedCountry)
   }
-
-  // --------------------------------------------------//
 
   public async createCountry (data: CreateCountryDto): Promise<CountryOutputDto> {
     try {
