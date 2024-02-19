@@ -1,3 +1,7 @@
-import { type Prisma } from '@prisma/client'
+import { type Country } from '@prisma/client'
 
-export type CreateCountryDto = Prisma.CountryCreateInput
+export interface CreateCountryDto {
+  abbreviation: Country['abbreviation']
+  name: Country['name']
+  capital?: Country['capital']
+}
