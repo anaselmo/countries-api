@@ -170,12 +170,6 @@ export class TouristService implements ITouristService {
    * @returns
    */
   public async getVisitsToCountry (touristId: Tourist['id'], countryId: Country['id']): Promise<VisitOutputDto[]> {
-    if ((await this.repo.country.findFirst({
-      where: { id: countryId, deleted: false }
-    })) === null) {
-      throw new NotFoundError(`Country #${countryId} not found`)
-    }
-
     const visitsToCountry = await this.repo.visit.findMany({
       where: { countryId, touristId, deleted: false }
     })
