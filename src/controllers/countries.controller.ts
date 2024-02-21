@@ -6,6 +6,18 @@ import type { UpdateCountryDto } from '../dtos/updateCountry.dto'
 
 const countryService = new CountryService(prisma)
 
+export const getCountriesAPI = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  res.json(
+    await countryService.getExternalCountries()
+  )
+}
+
+export const createCountriesFromExternalAPI = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  res.json(
+    await countryService.upsertCountriesFromAPI()
+  )
+}
+
 export const getCountries = async (req: Request, res: Response): Promise<void> => {
   const countries = await countryService.getCountries()
   res.json(countries)
