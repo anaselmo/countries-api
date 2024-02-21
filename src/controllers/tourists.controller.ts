@@ -1,97 +1,53 @@
-import { type Request, type Response } from 'express'
+import type { Request, Response } from 'express'
 import { prisma } from '../db'
 import { TouristService } from '../services/tourists.service'
-
-// --------------------------------------------------------------------//
-// --------------------------------------------------------------------//
+import type { RegisterTouristDto } from '../dtos/registerTourist.dto'
+import type { LoginTouristDto } from '../dtos/loginTourist.dto'
+import type { JwtPayloadCustom } from '../utils/handleJwt'
+import type { UpdateTouristDto } from '../dtos/updateTourist.dto'
 
 const touristService = new TouristService(prisma)
 
-// --------------------------------------------------------------------//
-
-/**
- * Obtener la lista de todos los países
- * @param req
- * @param res
- */
-export const getTourists = async (req: Request, res: Response) => {
+export const getTourists = async (req: Request, res: Response): Promise<void> => {
   const tourists = await touristService.getTourists()
   res.json(tourists)
 }
 
-// --------------------------------------------------------------------//
-
-/**
- * Obtener la información de un país por su id
- * @param req
- * @param res
- */
-export const getTourist = async (req: Request, res: Response) => {
+export const getTourist = async (req: Request, res: Response): Promise<void> => {
   const id = parseInt(req.params.id)
   const tourist = await touristService.getTourist(id)
   res.json(tourist)
 }
 
-// --------------------------------------------------------------------//
-
-/**
- * Registrar turista
- * @param req
- * @param res
- * @returns
- */
-export const registerTourist = async (req: Request, res: Response) => {
-  const registeredTourist = await touristService.registerTourist(req.body)
+export const registerTourist = async (req: Request, res: Response): Promise<void> => {
+  const { body } = req
+  const registeredTourist = await touristService.registerTourist(body as RegisterTouristDto)
   res.json(registeredTourist)
 }
 
-// --------------------------------------------------------------------//
-
-/**
- * Iniciar sesión de turista
- * @param req
- * @param res
- * @returns
- */
-export const loginTourist = async (req: Request, res: Response) => {
-  const loggedTourist = await touristService.loginTourist(req.body)
+export const loginTourist = async (req: Request, res: Response): Promise<void> => {
+  const { body } = req
+  console.log({ loginBody: body })
+  const loggedTourist = await touristService.loginTourist(body as LoginTouristDto)
   res.json(loggedTourist)
 }
 
-// --------------------------------------------------------------------//
-
-/**
- * Actualizar información de un turista
- * @param req
- * @param res
- */
-export const updateTourist = async (req: Request, res: Response) => {
-  const loggedTourist = res.locals.dataToken
-  const touristId = loggedTourist.id
+export const updateTourist = async (req: Request, res: Response): Promise<void> => {
+  const { id } = res.locals.tokenPayload as JwtPayloadCustom
+  const { body } = req
   const updatedTourist = await touristService.updateTourist(
-    touristId,
-    req.body
+    id,
+    body as UpdateTouristDto
   )
   res.json(updatedTourist)
 }
 
-// --------------------------------------------------------------------//
-
-/**
- * Eliminar un país
- * @param req
- * @param res
- */
-export const deleteTourist = async (req: Request, res: Response) => {
-  const loggedTourist = res.locals.dataToken
-  const touristId = loggedTourist.id
+export const deleteTourist = async (req: Request, res: Response): Promise<void> => {
+  const { id } = res.locals.tokenPayload as JwtPayloadCustom
   const hardDelete = req.query.hard === 'true'
-  const deletedTourist = await touristService.deleteTourist(
-    touristId,
+  const updatedTourist = await touristService.deleteTourist(
+    id,
     hardDelete
   )
-  res.json(deletedTourist)
+  res.json(updatedTourist)
 }
-
-// --------------------------------------------------------------------//
-// --------------------------------------------------------------------//

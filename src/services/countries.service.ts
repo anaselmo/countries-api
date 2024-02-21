@@ -1,199 +1,77 @@
-import { type Country, type Prisma } from '@prisma/client'
-import { prisma } from '../db'
-import { NotFoundError, UnauthenticatedError } from '../utils/handleError'
-import { validatorCreateCountry, validatorDeleteCountry, validatorGetCountryByAbbreviation, validatorGetCountryById, validatorGetCountryByName, validatorUpdateCountry } from '../validators/countries.validator'
-
-// --------------------------------------------------------------------//
-// --------------------------------------------------------------------//
-
-export interface ICountryService {
-  getCountry: (id: Country['id']) => Promise<CountryOutputUser>
-  getCountries: () => Promise<CountryOutputUser[]>
-  updateCountry: (
-    id: Country['id'],
-    data: Prisma.CountryUpdateInput
-  ) => Promise<CountryOutputUser>
-  deleteCountry: (
-    id: Country['id'],
-    hard?: boolean
-  ) => Promise<CountryOutputUser>
-  createCountry: (
-    data: Prisma.CountryCreateInput
-  ) => Promise<CountryOutputUser>
-}
-
-// --------------------------------------------------//
-
-const countryOutputAdmin = {
-  id: true,
-  abbreviation: true,
-  name: true,
-  capital: true,
-  deleted: true
-}
-
-// --------------------------------------------------//
-
-interface CountryOutputUser {
-  id: Country['id']
-  abbreviation: Country['abbreviation']
-  name: Country['name']
-  capital: Country['capital']
-}
-
-const countryOutputUser = {
-  id: true,
-  abbreviation: true,
-  name: true,
-  capital: true
-}
-
-// --------------------------------------------------------------------//
+import { Prisma, type Country } from '@prisma/client'
+import type { prisma } from '../db'
+import { AlreadyExistsError, NotFoundError } from '../utils/handleError'
+import type { CreateCountryDto } from '../dtos/createCountry.dto'
+import type { UpdateCountryDto } from '../dtos/updateCountry.dto'
+import type { CountryOutputDto, ICountryService } from '../dtos/countryService.dto'
+import { sanitizeCountry } from '../utils/sanitizeData'
 
 export class CountryService implements ICountryService {
-  constructor (private readonly repo: typeof prisma) {} // tb Prisma
+  constructor (private readonly repo: typeof prisma) {}
 
-  // --------------------------------------------------//
-
-  private async findCountryById (id: Country['id']) {
+  public async getCountry (id: Country['id']): Promise<CountryOutputDto> {
     const country = await this.repo.country.findFirst({
-      where: validatorGetCountryById(id)
+      where: { id, deleted: false }
     })
-
-    if (!country) {
-      throw new NotFoundError(`Country #${id} not found`)
-    } else if (country.deleted) {
-      throw new UnauthenticatedError(`You cannot access Country #${id} (soft deleted)`)
-    }
-
-    return country
+    if (country === null) throw new NotFoundError(`Country with id #${id} not found`)
+    return sanitizeCountry(country)
   }
 
-  // --------------------------------------------------//
-
-  public async getCountry (id: Country['id']) {
-    const country = await this.findCountryById(id)
-    const { deleted, ...sanitizedCountry } = country
-    return sanitizedCountry
-  }
-
-  // --------------------------------------------------//
-
-  public async getCountries () {
+  public async getCountries (): Promise<CountryOutputDto[]> {
     const countries = await this.repo.country.findMany({
-      where: {
-        deleted: false
-      }
+      where: { deleted: false }
     })
-
-    if (!countries) {
-      throw new Error('Countries not found')
-    }
-
-    const sanitizedCountries = countries.map(country => {
-      const { deleted, ...sanitizedCountry } = country
-      return sanitizedCountry
-    })
-
-    return sanitizedCountries
+    if (countries.length === 0) throw new NotFoundError('Countries not found')
+    return countries.map(country => sanitizeCountry(country))
   }
 
-  // --------------------------------------------------//
+  public async updateCountry (id: Country['id'], data: UpdateCountryDto): Promise<CountryOutputDto> {
+    try {
+      return sanitizeCountry(await this.repo.country.update({
+        where: { id },
+        data
+      }))
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        if (err.code === 'P2010') {
+          throw new NotFoundError(`Country with id "#${id}" not found`)
+        }
+      }
+      throw err
+    }
+  }
 
-  public async updateCountry (id: Country['id'], data: Prisma.CountryUpdateInput) {
-    await this.findCountryById(id)
-
-    const { name, abbreviation, capital } = data
-
-    // TODO: Preguntar a Germán
-    // if (name){
-    //     const countryWithSameName = await this.repo.country.findUnique({
-    //         where: validatorGetCountryByName(name)
-    //     });
-    //     if (countryWithSameName) {
-    //         throw new Error(`Country with name "${name}" already exists`);
-    //     }
-    // }
-
-    // if (abbreviation) {
-    //     const countryWithSameAbbreviation = await this.repo.country.findUnique({
-    //         where: validatorGetCountryByAbbreviation(abbreviation)
-    //     });
-    //     if (countryWithSameAbbreviation) {
-    //         throw new Error(`Country with abbreviation "${abbreviation}" already exists`);
-    //     }
-    // }
+  public async deleteCountry (id: Country['id'], hard: boolean = false): Promise<CountryOutputDto> {
+    if (hard) {
+      return sanitizeCountry(await this.repo.country.delete({
+        where: { id }
+      }))
+    }
 
     const updatedCountry = await this.repo.country.update({
-      where: validatorGetCountryById(id),
-      data: validatorUpdateCountry(id, {
-        name, abbreviation, capital
-      }),
-      select: countryOutputUser
+      where: { id },
+      data: { deleted: true }
+    })
+    await this.repo.visit.updateMany({
+      where: { countryId: id },
+      data: { deleted: true }
     })
 
-    return updatedCountry
+    return sanitizeCountry(updatedCountry)
   }
 
-  // --------------------------------------------------//
-
-  public async deleteCountry (id: Country['id'], hard?: boolean) {
-    const countryToDelete = await this.repo.country.findFirst({
-      where: validatorDeleteCountry(id)
-    })
-
-    if (!countryToDelete) {
-      throw new NotFoundError(`Country #${id} not found`)
-    }
-
-    let deletedCountry
-    if (hard) {
-      await prisma.visit.deleteMany({
-        where: { countryId: id }
-      })
-      deletedCountry = await prisma.country.delete({
-        where: validatorDeleteCountry(id),
-        select: countryOutputUser
-      })
-    } else {
-      if (countryToDelete.deleted) {
-        throw new UnauthenticatedError(`You do not have permissions to delete Country #${id} (soft delete)`)
+  public async createCountry (data: CreateCountryDto): Promise<CountryOutputDto> {
+    try {
+      return sanitizeCountry(await this.repo.country.create({
+        data
+      }))
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        if (err.code === 'P2002') {
+          throw new AlreadyExistsError(`Country with name "${data.name}" or abbreviation "${data.abbreviation}" already exists`)
+        }
       }
-      deletedCountry = await this.updateCountry(id, { deleted: true })
+      throw err
     }
-
-    if (!deletedCountry) {
-      throw new Error(`Country #${id} could not be (soft) deleted`)
-    }
-
-    return deletedCountry
   }
-
-  // --------------------------------------------------//
-
-  public async createCountry (data: Prisma.CountryCreateInput) {
-    const validatedData = validatorCreateCountry(data)
-
-    const { name, abbreviation } = validatedData
-    const countryWithSameName = await this.repo.country.findUnique({
-      where: { name }
-    })
-    if (countryWithSameName) {
-      throw new Error(`Country with name "${name}" already exists`)
-    }
-    const countryWithSameAbbreviation = await this.repo.country.findUnique({
-      where: { abbreviation }
-    })
-    if (countryWithSameAbbreviation) {
-      throw new Error(`Country with abbreviation "${abbreviation}" already exists`)
-    }
-
-    const newCountry = await this.repo.country.create({
-      data: validatorCreateCountry(data)
-    })
-
-    return newCountry
-  }
-
-  // --------------------------------------------------//
 }

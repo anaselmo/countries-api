@@ -1,17 +1,12 @@
-import { type Request, type Response, type NextFunction } from 'express'
+import type { Request, Response, NextFunction, RequestHandler } from 'express'
 
-// --------------------------------------------------------------------//
-// --------------------------------------------------------------------//
-
-export const outputError = (res: Response, message: string, code: number, error?: unknown) => {
+export const outputError = (res: Response, message: string, code: number, error?: unknown): void => {
   console.error(message, error)
   res.status(code).send({ error: message })
 }
 
-// --------------------------------------------------------------------//
-
-export const handleError = (fn: (req: Request, res: Response, next: NextFunction) => void) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
+export const handleError = (fn: (req: Request, res: Response, next: NextFunction) => Promise<void>): RequestHandler => {
+  return (async (req: Request, res: Response, next: NextFunction) => {
     let e = null
     try {
       await fn(req, res, next)
@@ -20,13 +15,11 @@ export const handleError = (fn: (req: Request, res: Response, next: NextFunction
       next(err)
     }
 
-    if (!e) {
+    if (e === null) {
       next()
     }
-  }
+  }) as RequestHandler
 }
-
-// --------------------------------------------------------------------//
 
 export class NotFoundError extends Error {
   constructor (msg?: string) {
@@ -40,4 +33,8 @@ export class UnauthenticatedError extends Error {
   }
 };
 
-// --------------------------------------------------------------------//
+export class AlreadyExistsError extends Error {
+  constructor (msg?: string) {
+    super(msg ?? 'RESOURCE_ALREADY_EXISTS')
+  }
+};

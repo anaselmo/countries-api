@@ -1,103 +1,57 @@
 import { type Request, type Response } from 'express'
 import { prisma } from '../db'
-import { type Tourist } from '@prisma/client'
 import { TouristService } from '../services/tourists.service'
-
-// --------------------------------------------------------------------//
-// --------------------------------------------------------------------//
+import type { JwtPayloadCustom } from '../utils/handleJwt'
+import type { CreateVisitDto } from '../dtos/createVisit.dto'
+import type { UpdateVisitDto } from '../dtos/updateVisit.dto'
 
 const touristService = new TouristService(prisma)
 
-// --------------------------------------------------------------------//
-
-/**
- * Obtener la lista de todas las visitas de un turista
- * @param req
- * @param res
- */
-export const getAllVisits = async (req: Request, res: Response) => {
-  const loggedTourist: Tourist = res.locals.dataToken
-  const touristId = loggedTourist.id
+export const getAllVisits = async (req: Request, res: Response): Promise<void> => {
+  const touristId = (res.locals.tokenPayload as JwtPayloadCustom).id
   const visits = await touristService.getAllVisits(touristId)
   res.json(visits)
 }
 
-// --------------------------------------------------------------------//
-
-/**
- * Obtener todas las visitas de un turista a un pais determinado
- * @param req
- * @param res
- */
-export const getVisitsToCountry = async (req: Request, res: Response) => {
-  const loggedTourist = res.locals.dataToken
-  const touristId = loggedTourist.id
-  const countryId = parseInt(req.params.countryId)
+export const getVisitsToCountry = async (req: Request, res: Response): Promise<void> => {
+  const touristId = (res.locals.tokenPayload as JwtPayloadCustom).id
+  const { countryId } = req.params
   const visit = await touristService.getVisitsToCountry(
     touristId,
-    countryId
+    Number.parseInt(countryId)
   )
   res.json(visit)
 }
 
-// --------------------------------------------------------------------//
-
-/**
- * Crear un registro de una visita
- * @param req
- * @param res
- */
-export const createVisit = async (req: Request, res: Response) => {
-  const loggedTourist = res.locals.dataToken
-  const touristId = loggedTourist.id
-  console.log(req.body)
-  const { countryId, ...data } = req.body
+export const createVisit = async (req: Request, res: Response): Promise<void> => {
+  const touristId = (res.locals.tokenPayload as JwtPayloadCustom).id
+  const { countryId, date } = req.body as CreateVisitDto
   const visit = await touristService.createVisit(
     touristId,
     countryId,
-    data
+    date
   )
   res.json(visit)
 }
 
-// --------------------------------------------------------------------//
-
-/**
- * Actualizar información de una visita
- * @param req
- * @param res
- */
-export const updateVisit = async (req: Request, res: Response) => {
-  const loggedTourist = res.locals.dataToken
-  const touristId: number = loggedTourist.id
-  const visitId = parseInt(req.params.id)
+export const updateVisit = async (req: Request, res: Response): Promise<void> => {
+  const touristId = (res.locals.tokenPayload as JwtPayloadCustom).id
+  const { body, params: { id } } = req
   const updatedVisit = await touristService.updateVisit(
-    visitId,
+    Number.parseInt(id),
     touristId,
-    req.body
+    body as UpdateVisitDto
   )
   res.json(updatedVisit)
 }
 
-// --------------------------------------------------------------------//
-
-/**
- * Eliminar una visita
- * @param req
- * @param res
- */
-export const deleteVisit = async (req: Request, res: Response) => {
-  const loggedTourist = res.locals.dataToken
-  const touristId: number = loggedTourist.id
-  const visitId = parseInt(req.params.id)
-  const hardDelete = req.query.hard === 'true'
+export const deleteVisit = async (req: Request, res: Response): Promise<void> => {
+  const touristId = (res.locals.tokenPayload as JwtPayloadCustom).id
+  const { query: { hard }, params: { id } } = req
   const deletedVisit = await touristService.deleteVisit(
-    visitId,
+    Number.parseInt(id),
     touristId,
-    hardDelete
+    hard === 'true'
   )
   res.json(deletedVisit)
 }
-
-// --------------------------------------------------------------------//
-// --------------------------------------------------------------------//
