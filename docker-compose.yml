@@ -1,0 +1,31 @@
+# Two services: one for the web app and one for the database (postgres)
+
+version: '3'
+
+services:
+  postgresdb:
+    image: postgres:latest
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: countries_admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: countries
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
+
+  # web_app:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: web_app
+  #   depends_on:
+  #     - postgresdb
+  #   volumes:
+  #     - .:/app
+  #   expose:
+  #     - "3000"
+  #   ports:
+  #     - "3000:3000"
