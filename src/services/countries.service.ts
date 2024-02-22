@@ -78,20 +78,11 @@ export class CountryService implements ICountryService {
   }
 
   public async upsertCountry (data: CreateCountryDto): Promise<CountryOutputDto> {
-    try {
-      return sanitizeCountry(await this.repo.country.upsert({
-        where: { abbreviation: data.abbreviation },
-        create: data,
-        update: data
-      }))
-    } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError) {
-        if (err.code === 'P2002') {
-          throw new AlreadyExistsError(`Country with name "${data.name}" or abbreviation "${data.abbreviation}" already exists`)
-        }
-      }
-      throw err
-    }
+    return sanitizeCountry(await this.repo.country.upsert({
+      where: { abbreviation: data.abbreviation },
+      create: data,
+      update: data
+    }))
   }
 
   public async createCountry (data: CreateCountryDto): Promise<CountryOutputDto> {
