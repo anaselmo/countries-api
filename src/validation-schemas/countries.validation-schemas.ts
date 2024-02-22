@@ -24,7 +24,3 @@ export const updateCountrySchema = Joi.object({
 export const deleteCountrySchema = Joi.object({
   id: Joi.number().required()
 })
-
-export const createCountriesFromExternalAPISchema = Joi.object({
-  url: Joi.string().required()
-})
