@@ -38,3 +38,9 @@ export class AlreadyExistsError extends Error {
     super(msg ?? 'RESOURCE_ALREADY_EXISTS')
   }
 };
+
+export class ExternalError extends Error {
+  constructor (msg?: string) {
+    super(msg ?? 'EXTERNAL_ERROR')
+  }
+}
