@@ -35,7 +35,7 @@ export class TouristService implements ITouristService {
     const tourists = await this.repo.tourist.findMany({
       where: { deleted: false }
     })
-    if (tourists.length === 0) throw new NotFoundError('Countries not found')
+    if (tourists.length === 0) throw new NotFoundError('Tourists not found')
     return tourists.map(tourist => sanitizeTourist(tourist))
   }
 
