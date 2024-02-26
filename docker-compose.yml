@@ -15,6 +15,15 @@ services:
       - "5432"
     ports:
       - "5432:5432"
+  
+  redis:
+    image: redis:latest
+    container_name: redis_server
+    restart: always
+    expose:
+      - "6379"
+    ports:
+      - "6379:6379"
 
   # web_app:
   #   build:
