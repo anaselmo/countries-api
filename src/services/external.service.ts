@@ -1,6 +1,5 @@
 import axios, { type AxiosInstance } from 'axios'
 import { ExternalError } from '../utils/handleError'
-// import { type IRawCountryAPI } from '../dtos/countryAPI.dto'
 import type { IRawCountryAPI } from '../dtos/countries.dto'
 
 export class ExternalService {
