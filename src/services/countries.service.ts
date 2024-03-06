@@ -1,9 +1,6 @@
 import { Prisma, type Country } from '@prisma/client'
 import type { prisma } from '../db'
 import { AlreadyExistsError, NotFoundError } from '../utils/handleError'
-// import type { ICreateCountryDto } from '../dtos/createCountry.dto'
-// import type { IUpdateCountryDto } from '../dtos/updateCountry.dto'
-// import type { CountryOutputDto, ICountryService } from '../dtos/countryService.dto'
 import type { ICreateCountryDto, IUpdateCountryDto, ICountryOutputDto, ICountryService } from '../dtos/countries.dto'
 import { sanitizeCountry, sanitizeCountryAPI } from '../utils/sanitizeData'
 import { ExternalService } from './external.service'
@@ -14,10 +11,8 @@ export class CountryService implements ICountryService {
   constructor (private readonly repo: typeof prisma) {}
 
   public async getExternalCountries (): Promise<ICreateCountryDto[]> {
-    return (
-      (await countriesApiService.getData(''))
-        .map(country => sanitizeCountryAPI(country))
-    )
+    return (await countriesApiService.getData(''))
+      .map(country => sanitizeCountryAPI(country))
   }
 
   public async upsertCountriesFromAPI (): Promise<ICountryOutputDto[]> {
@@ -46,12 +41,13 @@ export class CountryService implements ICountryService {
   public async updateCountry (id: Country['id'], data: IUpdateCountryDto): Promise<ICountryOutputDto> {
     try {
       return sanitizeCountry(await this.repo.country.update({
-        where: { id },
+        where: { id, deleted: false },
         data
       }))
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError) {
-        if (err.code === 'P2010') {
+        console.log(err.code)
+        if (err.code === 'P2010' || err.code === 'P2025') {
           throw new NotFoundError(`Country with id "#${id}" not found`)
         }
       }

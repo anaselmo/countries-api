@@ -69,7 +69,7 @@ export class TouristService implements ITouristService {
       return sanitizeTourist(updatedTourist)
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError) {
-        if (err.code === 'P2010') {
+        if (err.code === 'P2010' || err.code === 'P2025') {
           throw new NotFoundError(`Tourist with id "#${id}" not found`)
         }
       }
@@ -84,7 +84,7 @@ export class TouristService implements ITouristService {
       }))
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError) {
-        if (err.code === 'P2010') {
+        if (err.code === 'P2010' || err.code === 'P2025') {
           throw new NotFoundError(`Tourist with email "#${data.email}" not found`)
         }
       }
@@ -164,7 +164,7 @@ export class TouristService implements ITouristService {
     try {
       const { countryId, date } = data
       return sanitizeVisit(await this.repo.visit.update({
-        where: { id, touristId },
+        where: { id, touristId, deleted: false },
         data: {
           country: { connect: { id: countryId } },
           date
