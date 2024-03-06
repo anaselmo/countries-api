@@ -12,10 +12,8 @@ export const authMiddleware = (async (req: Request, res: Response, next: NextFun
     if (token.length === 0) {
       throw new UnauthenticatedError('NO_TOKEN')
     }
-    console.log({ token })
 
     const tokenPayload = verifyToken(token)
-    console.log({ tokenPayload })
     if (tokenPayload === null) {
       throw new UnauthenticatedError('ERROR_TOKEN')
     }

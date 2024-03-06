@@ -1,9 +1,10 @@
 import { Prisma, type Country } from '@prisma/client'
 import type { prisma } from '../db'
 import { AlreadyExistsError, NotFoundError } from '../utils/handleError'
-import type { CreateCountryDto } from '../dtos/createCountry.dto'
-import type { UpdateCountryDto } from '../dtos/updateCountry.dto'
-import type { CountryOutputDto, ICountryService } from '../dtos/countryService.dto'
+// import type { ICreateCountryDto } from '../dtos/createCountry.dto'
+// import type { IUpdateCountryDto } from '../dtos/updateCountry.dto'
+// import type { CountryOutputDto, ICountryService } from '../dtos/countryService.dto'
+import type { ICreateCountryDto, IUpdateCountryDto, ICountryOutputDto, ICountryService } from '../dtos/countries.dto'
 import { sanitizeCountry, sanitizeCountryAPI } from '../utils/sanitizeData'
 import { ExternalService } from './external.service'
 
@@ -12,21 +13,21 @@ const countriesApiService = new ExternalService('https://api.sampleapis.com/coun
 export class CountryService implements ICountryService {
   constructor (private readonly repo: typeof prisma) {}
 
-  public async getExternalCountries (): Promise<CreateCountryDto[]> {
+  public async getExternalCountries (): Promise<ICreateCountryDto[]> {
     return (
       (await countriesApiService.getData(''))
         .map(country => sanitizeCountryAPI(country))
     )
   }
 
-  public async upsertCountriesFromAPI (): Promise<CountryOutputDto[]> {
+  public async upsertCountriesFromAPI (): Promise<ICountryOutputDto[]> {
     const countries = (await countriesApiService.getData(''))
     const sanitizedCountries = countries.map(country => sanitizeCountryAPI(country))
     const upsertedCountries = await Promise.all(sanitizedCountries.map(async country => await this.upsertCountry(country)))
     return upsertedCountries
   }
 
-  public async getCountry (id: Country['id']): Promise<CountryOutputDto> {
+  public async getCountry (id: Country['id']): Promise<ICountryOutputDto> {
     const country = await this.repo.country.findFirst({
       where: { id, deleted: false }
     })
@@ -34,7 +35,7 @@ export class CountryService implements ICountryService {
     return sanitizeCountry(country)
   }
 
-  public async getCountries (): Promise<CountryOutputDto[]> {
+  public async getCountries (): Promise<ICountryOutputDto[]> {
     const countries = await this.repo.country.findMany({
       where: { deleted: false }
     })
@@ -42,7 +43,7 @@ export class CountryService implements ICountryService {
     return countries.map(country => sanitizeCountry(country))
   }
 
-  public async updateCountry (id: Country['id'], data: UpdateCountryDto): Promise<CountryOutputDto> {
+  public async updateCountry (id: Country['id'], data: IUpdateCountryDto): Promise<ICountryOutputDto> {
     try {
       return sanitizeCountry(await this.repo.country.update({
         where: { id },
@@ -58,7 +59,7 @@ export class CountryService implements ICountryService {
     }
   }
 
-  public async deleteCountry (id: Country['id'], hard: boolean = false): Promise<CountryOutputDto> {
+  public async deleteCountry (id: Country['id'], hard: boolean = false): Promise<ICountryOutputDto> {
     if (hard) {
       return sanitizeCountry(await this.repo.country.delete({
         where: { id }
@@ -77,7 +78,7 @@ export class CountryService implements ICountryService {
     return sanitizeCountry(updatedCountry)
   }
 
-  public async upsertCountry (data: CreateCountryDto): Promise<CountryOutputDto> {
+  public async upsertCountry (data: ICreateCountryDto): Promise<ICountryOutputDto> {
     return sanitizeCountry(await this.repo.country.upsert({
       where: { abbreviation: data.abbreviation },
       create: data,
@@ -85,7 +86,7 @@ export class CountryService implements ICountryService {
     }))
   }
 
-  public async createCountry (data: CreateCountryDto): Promise<CountryOutputDto> {
+  public async createCountry (data: ICreateCountryDto): Promise<ICountryOutputDto> {
     try {
       return sanitizeCountry(await this.repo.country.create({
         data

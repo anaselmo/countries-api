@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance } from 'axios'
 import { ExternalError } from '../utils/handleError'
-import { type RawCountryAPI } from '../dtos/countryAPI.dto'
+// import { type IRawCountryAPI } from '../dtos/countryAPI.dto'
+import type { IRawCountryAPI } from '../dtos/countries.dto'
 
 export class ExternalService {
   private readonly axios: AxiosInstance
@@ -9,7 +10,7 @@ export class ExternalService {
     this.axios = axios.create({ baseURL })
   }
 
-  public async getData (url: string): Promise<RawCountryAPI[]> {
+  public async getData (url: string): Promise<IRawCountryAPI[]> {
     try {
       return (await this.axios.get(url)).data
     } catch (err) {

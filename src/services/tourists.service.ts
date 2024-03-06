@@ -3,23 +3,20 @@ import type { prisma } from '../db'
 import { AlreadyExistsError, NotFoundError, UnauthenticatedError } from '../utils/handleError'
 import { comparePasswords, encrypt } from '../utils/handlePassword'
 import { tokenSign } from '../utils/handleJwt'
-import type { LoginTouristDto } from '../dtos/loginTourist.dto'
-import type { ITouristService, TouristOutputDto } from '../dtos/touristService.dto'
-import type { UpdateTouristDto } from '../dtos/updateTourist.dto'
-import type { VisitOutputDto } from '../dtos/visitOutput.dto'
+// import type { ILoginTouristDto } from '../dtos/loginTourist.dto'
+// import type { ITouristService, ITouristOutputDto } from '../dtos/touristService.dto'
+// import type { IUpdateTouristDto } from '../dtos/updateTourist.dto'
+// import type { IVisitOutputDto } from '../dtos/visitOutput.dto'
 import { sanitizeTourist, sanitizeVisit } from '../utils/sanitizeData'
-import type { RegisterTouristDto } from '../dtos/registerTourist.dto'
-import type { UpdateVisitDto } from '../dtos/updateVisit.dto'
+// import type { IRegisterTouristDto } from '../dtos/registerTourist.dto'
+// import type { IUpdateVisitDto } from '../dtos/updateVisit.dto'
+import type { IRegisterTouristDto, ILoginTouristDto, ITouristOutputDto, ITouristService, IUpdateTouristDto } from '../dtos/tourists.dto'
+import type { IVisitOutputDto, IUpdateVisitDto } from '../dtos/visits.dto'
 
 export class TouristService implements ITouristService {
   constructor (private readonly repo: typeof prisma) {}
 
-  /**
-   * Get tourist information with id 'id'
-   * @param id
-   * @returns
-   */
-  public async getTourist (id: Tourist['id']): Promise<TouristOutputDto> {
+  public async getTourist (id: Tourist['id']): Promise<ITouristOutputDto> {
     const tourist = await this.repo.tourist.findFirst({
       where: { id, deleted: false }
     })
@@ -27,11 +24,7 @@ export class TouristService implements ITouristService {
     return sanitizeTourist(tourist)
   }
 
-  /**
-   * Get all the tourists registered
-   * @returns
-   */
-  public async getTourists (): Promise<TouristOutputDto[]> {
+  public async getTourists (): Promise<ITouristOutputDto[]> {
     const tourists = await this.repo.tourist.findMany({
       where: { deleted: false }
     })
@@ -39,13 +32,7 @@ export class TouristService implements ITouristService {
     return tourists.map(tourist => sanitizeTourist(tourist))
   }
 
-  /**
-   * Update tourist information
-   * @param id
-   * @param data
-   * @returns
-   */
-  public async updateTourist (id: Tourist['id'], data: UpdateTouristDto): Promise<TouristOutputDto> {
+  public async updateTourist (id: Tourist['id'], data: IUpdateTouristDto): Promise<ITouristOutputDto> {
     try {
       return sanitizeTourist(await this.repo.tourist.update({
         where: { id },
@@ -53,7 +40,6 @@ export class TouristService implements ITouristService {
       }))
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError) {
-        console.log({ errorCode: err.code })
         if (err.code === 'P2025') {
           throw new NotFoundError('Tourist not found')
         }
@@ -62,13 +48,7 @@ export class TouristService implements ITouristService {
     }
   }
 
-  /**
-   * Delete tourist
-   * @param id
-   * @param hard
-   * @returns
-   */
-  public async deleteTourist (id: Tourist['id'], hard?: boolean): Promise<TouristOutputDto> {
+  public async deleteTourist (id: Tourist['id'], hard?: boolean): Promise<ITouristOutputDto> {
     try {
       if (hard === true) {
         return sanitizeTourist(await this.repo.tourist.delete({
@@ -76,7 +56,6 @@ export class TouristService implements ITouristService {
         }))
       }
 
-      console.log({ id })
       const updatedTourist = await this.repo.tourist.update({
         where: { id },
         data: { deleted: true }
@@ -90,7 +69,6 @@ export class TouristService implements ITouristService {
       return sanitizeTourist(updatedTourist)
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError) {
-        console.log(err.code)
         if (err.code === 'P2010') {
           throw new NotFoundError(`Tourist with id "#${id}" not found`)
         }
@@ -99,12 +77,7 @@ export class TouristService implements ITouristService {
     }
   }
 
-  /**
-   * Register a tourist in the API
-   * @param data
-   * @returns
-   */
-  public async registerTourist (data: RegisterTouristDto): Promise<TouristOutputDto> {
+  public async registerTourist (data: IRegisterTouristDto): Promise<ITouristOutputDto> {
     try {
       return sanitizeTourist(await this.repo.tourist.create({
         data: { ...data, password: await encrypt(data.password) }
@@ -119,18 +92,10 @@ export class TouristService implements ITouristService {
     }
   }
 
-  /**
-   * Log a tourist in the API
-   * @param data
-   * @returns
-   */
-  public async loginTourist (data: LoginTouristDto): Promise<string> {
+  public async loginTourist (data: ILoginTouristDto): Promise<string> {
     try {
       const tourist = await this.repo.tourist.findUnique({
-        where: {
-          email: data.email,
-          deleted: false
-        }
+        where: { email: data.email, deleted: false }
       })
 
       if (tourist === null) throw new NotFoundError(`Tourist with email "${data.email}" not found`)
@@ -150,12 +115,7 @@ export class TouristService implements ITouristService {
     }
   }
 
-  /**
-   * Get all visits of the tourist (bearer of the token)
-   * @param touristId
-   * @returns
-   */
-  public async getAllVisits (touristId: Tourist['id']): Promise<VisitOutputDto[]> {
+  public async getAllVisits (touristId: Tourist['id']): Promise<IVisitOutputDto[]> {
     const visits = await this.repo.visit.findMany({
       where: { touristId, deleted: false }
     })
@@ -163,13 +123,7 @@ export class TouristService implements ITouristService {
     return visits.map(visit => sanitizeVisit(visit))
   }
 
-  /**
-   * Get all the visits to the country 'countryId' of the tourist (bearer of the token)
-   * @param touristId
-   * @param countryId
-   * @returns
-   */
-  public async getVisitsToCountry (touristId: Tourist['id'], countryId: Country['id']): Promise<VisitOutputDto[]> {
+  public async getVisitsToCountry (touristId: Tourist['id'], countryId: Country['id']): Promise<IVisitOutputDto[]> {
     const visitsToCountry = await this.repo.visit.findMany({
       where: { countryId, touristId, deleted: false }
     })
@@ -180,14 +134,7 @@ export class TouristService implements ITouristService {
     return visitsToCountry.map(visit => sanitizeVisit(visit))
   }
 
-  /**
-   * Create a visit
-   * @param touristId
-   * @param countryId
-   * @param date
-   * @returns
-   */
-  public async createVisit (touristId: Tourist['id'], countryId: Country['id'], date: Visit['date'] | undefined): Promise<VisitOutputDto> {
+  public async createVisit (touristId: Tourist['id'], countryId: Country['id'], date: Visit['date'] | undefined): Promise<IVisitOutputDto> {
     try {
       return sanitizeVisit(await this.repo.visit.create({
         data: {
@@ -202,7 +149,6 @@ export class TouristService implements ITouristService {
       }))
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError) {
-        console.log(err.code)
         if (err.code === 'P2010') {
           throw new NotFoundError(`Tourist #${touristId} or Country #${countryId} not found`)
         }
@@ -214,14 +160,7 @@ export class TouristService implements ITouristService {
     }
   }
 
-  /**
-   * Update a visit
-   * @param id
-   * @param touristId
-   * @param data
-   * @returns
-   */
-  public async updateVisit (id: Visit['id'], touristId: Tourist['id'], data: UpdateVisitDto): Promise<VisitOutputDto> {
+  public async updateVisit (id: Visit['id'], touristId: Tourist['id'], data: IUpdateVisitDto): Promise<IVisitOutputDto> {
     try {
       const { countryId, date } = data
       return sanitizeVisit(await this.repo.visit.update({
@@ -233,7 +172,6 @@ export class TouristService implements ITouristService {
       }))
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError) {
-        console.log({ errorCode: err.code })
         if (err.code === 'P2025') {
           throw new NotFoundError(`-Tourist #${touristId} does not own Visit #${id}- or -Visit/Country not found-`)
         }
@@ -242,14 +180,7 @@ export class TouristService implements ITouristService {
     }
   }
 
-  /**
-   * Deleting a visit
-   * @param id
-   * @param touristId
-   * @param hard
-   * @returns
-   */
-  public async deleteVisit (id: Visit['id'], touristId: Tourist['id'], hard?: boolean): Promise<VisitOutputDto> {
+  public async deleteVisit (id: Visit['id'], touristId: Tourist['id'], hard?: boolean): Promise<IVisitOutputDto> {
     try {
       if (hard === true) {
         return sanitizeVisit(await this.repo.visit.delete({
@@ -265,7 +196,6 @@ export class TouristService implements ITouristService {
       return sanitizeVisit(updatedVisit)
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError) {
-        console.log(err.code)
         if (err.code === 'P2025') {
           throw new NotFoundError('Visit not found')
         }
