@@ -7,16 +7,10 @@ export const outputError = (res: Response, message: string, code: number, error?
 
 export const handleError = (fn: (req: Request, res: Response, next: NextFunction) => Promise<void>): RequestHandler => {
   return (async (req: Request, res: Response, next: NextFunction) => {
-    let e = null
     try {
       await fn(req, res, next)
     } catch (err) {
-      e = err
       next(err)
-    }
-
-    if (e === null) {
-      next()
     }
   }) as RequestHandler
 }
