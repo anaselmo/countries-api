@@ -1,8 +1,22 @@
 import { Router } from 'express'
-import { createCountriesFromExternalAPI, createCountry, deleteCountry, getCountries, getCountriesAPI, getCountry, updateCountry } from '../controllers/countries.controller'
-import { handleError } from '../utils/handleError'
-import { getCountrySchemaParams, createCountrySchemaBody, updateCountrySchemaParams, updateCountrySchemaBody, deleteCountrySchemaParams } from '../validation/countries.validation-schemas'
 import validator from '../validation'
+import { handleError } from '../utils/handleError'
+import {
+  createCountriesFromExternalAPI,
+  createCountry,
+  deleteCountry,
+  getCountries,
+  getCountriesAPI,
+  getCountry,
+  updateCountry
+} from '../controllers/countries.controller'
+import {
+  getCountrySchemaParams,
+  createCountrySchemaBody,
+  updateCountrySchemaParams,
+  updateCountrySchemaBody,
+  deleteCountrySchemaParams
+} from '../validation/countries.validation-schemas'
 
 const router = Router()
 

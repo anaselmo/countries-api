@@ -1,9 +1,21 @@
 import { Router } from 'express'
-import { registerTourist, loginTourist, deleteTourist, getTourist, getTourists, updateTourist } from '../controllers/tourists.controller'
 import { authMiddleware } from '../middleware/session.middleware'
 import { handleError } from '../utils/handleError'
 import validator from '../validation'
-import { createTouristSchemaBody, getTouristSchemaParams, loginTouristSchemaBody, updateTouristSchemaBody } from '../validation/tourists.validation-schemas'
+import {
+  registerTourist,
+  loginTourist,
+  deleteTourist,
+  getTourist,
+  getTourists,
+  updateTourist
+} from '../controllers/tourists.controller'
+import {
+  createTouristSchemaBody,
+  getTouristSchemaParams,
+  loginTouristSchemaBody,
+  updateTouristSchemaBody
+} from '../validation/tourists.validation-schemas'
 
 const router = Router()
 
